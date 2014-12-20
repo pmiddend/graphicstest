@@ -1,31 +1,45 @@
+{-# LANGUAGE RankNTypes      #-}
 {-# LANGUAGE TemplateHaskell #-}
 module Main where
 
 import           Control.Exception         (bracket, bracket_)
-import           Control.Lens              ((^.))
+import           Control.Lens              ((^.),(&))
+import           Control.Lens.Getter       (Getter, to, use)
+import Control.Monad(liftM)
+import           Control.Lens.Iso          (Iso', from, iso)
+import           Control.Lens.Setter       ((<>=),(%=),(.=),(.~),(%~))
 import           Control.Lens.TH           (makeLenses)
-import           Data.Map.Strict           (Map)
+import           Control.Monad.IO.Class    (MonadIO, liftIO)
+import           Control.Monad.Loops       (unfoldM)
+import           Control.Monad.Writer.Strict  (WriterT, execWriterT,tell)
+import           Data.Map.Strict           ((!))
 import           Data.Monoid
+import           Data.Text                 (Text, pack, unpack)
 import           Data.Word                 (Word8)
+import qualified Graphics.UI.SDL.Color     as SDLC
+import           Graphics.UI.SDL.Events    (Event (..), Event (..),
+                                            EventData (..), KeyMovement (..),
+                                            pollEvent)
 import           Graphics.UI.SDL.Image     as SDLImage
 import qualified Graphics.UI.SDL.Rect      as SDLRect
 import qualified Graphics.UI.SDL.Render    as SDLR
-import Wrench.Time
-import qualified Graphics.UI.SDL.TTF       as SDLTtf
-import           Control.Monad.Loops    (unfoldM)
-import           Graphics.UI.SDL.Events (Event (..), Event (..), EventData (..),
-                                         KeyMovement (..), pollEvent)
 import qualified Graphics.UI.SDL.TTF       as SDLTtf
 import           Graphics.UI.SDL.TTF.Types (TTFFont)
 import qualified Graphics.UI.SDL.Types     as SDLT
-import qualified Graphics.UI.SDL.Types     as SDLT
 import qualified Graphics.UI.SDL.Video     as SDLV
-import           Linear.V2                 (V2(..), _x, _y)
-import           Linear.V3                 (V3(..))
-import           Linear.Matrix             (eye3,(!*!),mkTransformation,M33)
+import           Linear.Matrix             (M33, eye3, mkTransformation, (!*),
+                                            (!*!))
+import           Linear.V2                 (V2 (..), _x, _y)
+import           Linear.V3                 (V3 (..))
+import           Numeric.Lens              (dividing)
 import           Wrench.FloatType          (FloatType)
-import           Wrench.ImageData          (readMediaFiles,SurfaceMap,AnimMap)
+import           Wrench.ImageData          (AnimMap, SurfaceMap, readMediaFiles)
 import           Wrench.Point              (Point)
+import           Wrench.Rectangle          (Rectangle (..), rectLeftTop,
+                                            rectRightBottom,
+                                            rectangleDimensions,
+                                            rectangleFromPoints)
+import           Wrench.Time
 
 type SpriteIdentifier = String
 
@@ -39,6 +53,15 @@ data Color = Color { _colorRed   :: Word8
                    deriving(Show,Eq)
 
 $(makeLenses ''Color)
+
+mkColorFromRgba :: Word8 -> Word8 -> Word8 -> Word8 -> Color
+mkColorFromRgba = Color
+
+colorsWhite :: Color
+colorsWhite = mkColorFromRgba 255 255 255 255
+
+colorsBlack :: Color
+colorsBlack = mkColorFromRgba 0 0 0 255
 
 data Picture = Line Point Point
              | Text String
@@ -54,12 +77,6 @@ data Picture = Line Point Point
 instance Monoid Picture where
   mempty = Blank
   mappend a b = Pictures [a,b]
-
-data Rectangle = Rectangle { _rectLeftTop     :: Point
-                           , _rectRightBottom :: Point
-                           } deriving(Show,Eq)
-
-$(makeLenses ''Rectangle)
 
 type WindowTitle = String
 
@@ -77,6 +94,20 @@ withFontInit = bracket_ SDLTtf.init SDLTtf.quit
 withImgInit :: IO a -> IO a
 withImgInit = bracket_ (SDLImage.init [SDLImage.initPng]) SDLImage.quit
 
+createFontTexture :: MonadIO m => SDLT.Renderer -> TTFFont -> Text -> Color -> m SDLT.Texture
+createFontTexture renderer font text color = do
+  surface <- liftIO $ SDLTtf.renderUTF8Blended font (unpack text) (color ^. from wrenchColor)
+  liftIO $ SDLR.createTextureFromSurface renderer surface
+
+floored :: (RealFrac a,Integral b) => Getter a b
+floored = to floor
+
+createAndRenderText :: MonadIO m => SDLT.Renderer -> TTFFont -> Text -> Color -> Point -> m SDLT.Texture
+createAndRenderText renderer font text color position = do
+  texture <- createFontTexture renderer font text color
+  (width, height) <- liftIO $ SDLTtf.sizeText font (unpack text)
+  liftIO $ SDLR.renderCopy renderer texture Nothing (Just $ SDLRect.Rect (position ^. _x ^. floored) (position ^. _y ^. floored) width height)
+  return texture
 
 withWindow :: String -> (SDLT.Window -> IO a) -> IO a
 withWindow title callback = SDLV.withWindow title (SDLT.Position SDLV.windowPosUndefined SDLV.windowPosUndefined) (SDLT.Size (fromIntegral screenAbsoluteWidth) (fromIntegral screenAbsoluteHeight)) windowFlags $ \win -> callback win
@@ -110,6 +141,10 @@ renderFinish = SDLR.renderPresent
 toV3 :: Num a => V2 a -> V3 a
 toV3 (V2 x y) = V3 x y 1
 
+toV2 :: Getter (V3 a) (V2 a)
+toV2 = to toV2'
+  where toV2' (V3 x y _) = V2 x y
+
 mkTranslation :: Point -> M33 FloatType
 mkTranslation p = V3 (V3 1 0 (p ^. _x)) (V3 0 1 (p ^. _y)) (V3 0 0 1)
 
@@ -129,58 +164,87 @@ data Radians = Radians { getRadians :: FloatType } deriving(Show,Eq)
 toDegrees :: Radians -> FloatType
 toDegrees = (/pi).(*180).getRadians
 
-renderSprite :: SDLT.Renderer -> SDLT.Texture -> SDLRect.Rect -> SDLRect.Rect -> Maybe SDLRect.Point -> Radians -> IO ()
-renderSprite r t srcrect dstrect rotationCenter rotation = SDLR.renderCopyEx r t (Just srcrect) (Just dstrect) (toDegrees rotation) rotationCenter []
+toSdlRect :: Rectangle -> SDLRect.Rect
+toSdlRect r = SDLRect.Rect (r ^. rectLeftTop ^. _x ^. floored) (r ^. rectLeftTop ^. _y ^. floored) (r ^. rectangleDimensions ^. _x ^. floored) (r ^. rectangleDimensions ^. _y ^. floored)
 
-blitRescale :: SurfaceData -> RectInt -> Maybe PointInt -> Radians -> SDLT.Renderer -> IO ()
-blitRescale (srcSurface,srcRect) destRect rotationCenter rotation renderer = do
-  renderSprite renderer srcSurface (toSDLRect srcRect) (toSDLRect destRect) (toSDLPoint <$> rotationCenter) rotation
+fromSdlRect :: SDLRect.Rect -> Rectangle
+fromSdlRect (SDLRect.Rect x y w h) = rectangleFromPoints (V2 (fromIntegral x) (fromIntegral y)) (V2 (fromIntegral (x + w)) (fromIntegral (y + h)))
 
-blitSameSize :: SurfaceData -> PointInt -> Maybe PointInt -> RadiansReal -> SDLT.Renderer -> IO ()
-blitSameSize sd@(_,srcRect) pos = blitRescale sd (Rect pos (pos + rectDimensions srcRect))
+fromSdlColor :: SDLC.Color -> Color
+fromSdlColor (SDLC.Color r g b a) = mkColorFromRgba r g b a
 
-blitAt :: SpriteIdentifier -> Point -> Maybe Point -> FloatType -> RenderPositionMode -> IO ()
-blitAt image pos rotCenter angle mode = do
-  renderer <- use gdRenderer
-  surfaces <- use gdSurfaces
-  let realPos = case mode of
-          RenderPositionCenter -> pos - ((`div` 2) <$> (rectDimensions $ snd $ imageData))
-          RenderPositionTopLeft -> pos
-      imageData = surfaces ! image
-  liftIO $ SDLH.blitSameSize imageData realPos rotCenter angle renderer
+toSdlColor :: Color -> SDLC.Color
+toSdlColor (Color r g b a) = SDLC.Color r g b a
 
-wrenchRender :: SDLT.Renderer -> SurfaceMap -> BackgroundColor -> Picture -> IO ()
-wrenchRender renderer surfaceMap backgroundColor picture = do
+wrenchRect :: Iso' SDLRect.Rect Rectangle
+wrenchRect = iso fromSdlRect toSdlRect
+
+wrenchColor :: Iso' SDLC.Color Color
+wrenchColor = iso fromSdlColor toSdlColor
+
+data RenderState = RenderState {   _rsTransformation :: M33 FloatType
+                                 , _rsRenderer       :: SDLT.Renderer
+                                 , _rsSurfaces       :: SurfaceMap
+                                 , _rsFont           :: TTFFont
+                                 , _rsColor          :: Color
+                               }
+
+type RenderOutput = [SDLT.Texture]
+
+$(makeLenses ''RenderState)
+
+concatMapM        :: (Monad m) => (a -> m [b]) -> [a] -> m [b]
+concatMapM f xs   =  liftM concat (mapM f xs)
+
+renderPicture :: RenderState -> Picture -> IO RenderOutput
+renderPicture rs p = case p of
+  Blank -> return []
+  Line _ _ -> undefined
+  Text s -> do texture <- createAndRenderText (rs ^. rsRenderer) (rs ^. rsFont) (pack s) (rs ^. rsColor) (((rs ^. rsTransformation) !* V3 0 0 1) ^. toV2)
+               return [texture]
+  InColor color picture -> do liftIO $ setRenderDrawColor (rs ^. rsRenderer) color
+                              renderPicture (rs & rsColor .~ color) picture
+  Pictures ps -> concatMapM (renderPicture rs) ps
+  Translate point picture -> renderPicture (rs & rsTransformation %~ (!*! mkTranslation point)) picture
+  Rotate r picture -> renderPicture (rs & rsTransformation %~ (!*! mkRotation r)) picture
+  Scale s picture -> renderPicture (rs & rsTransformation %~ (!*! mkScale s)) picture
+  Sprite identifier positionMode -> do
+    let surfaces = rs ^. rsSurfaces
+        m = rs ^. rsTransformation
+        renderer = rs ^. rsRenderer
+        (texture,rectangle) = surfaces ! pack identifier
+        origin = (m !* V3 0 0 1) ^. toV2
+        pos = case positionMode of
+                        RenderPositionCenter -> origin - (rectangle ^. rectangleDimensions ^. dividing 2)
+                        RenderPositionTopLeft -> origin
+        rot = 0
+        rotCenter = Nothing
+        flipFlags = []
+        srcRect = Just (rectangle ^. from wrenchRect)
+        destRect = Just (rectangleFromPoints pos (pos + (rectangle ^. rectangleDimensions)) ^. from wrenchRect)
+    liftIO $ SDLR.renderCopyEx renderer texture srcRect destRect rot rotCenter flipFlags
+    return []
+
+destroyTexture :: MonadIO m => SDLT.Texture -> m ()
+destroyTexture t = liftIO $ SDLR.destroyTexture t
+
+wrenchRender :: SDLT.Renderer -> SurfaceMap -> TTFFont -> BackgroundColor -> Picture -> IO ()
+wrenchRender renderer surfaceMap font backgroundColor outerPicture = do
   setRenderDrawColor renderer backgroundColor
   renderClear renderer
-  _ <- renderPicture eye3 picture
-  return ()
-  where renderPicture :: M33 FloatType -> Picture -> IO (M33 FloatType)
-        renderPicture m p = case picture of
-          Blank -> return m
-          Pictures ps -> undefined
-          Translate point picture -> renderPicture (m !*! mkTranslation point) picture
-          Rotate r picture -> renderPicture (m !*! mkRotation r) picture
-          Scale p picture -> renderPicture (m !*! mkScale p) picture
-          Sprite identifier positionMode ->
-            let (texture,rectangle) = surfaceMap ! identifier
-                origin = m !* (V3 0 0 1)
-                pos = case positionMode of
-                        RenderPositionCenter -> origin - ((`div` 2) <$> (rectangleDimensions rectangle))
-                        RenderPositionTopLeft -> origin
-            in SDLR.renderCopyEx r t (Just srcrect) (Just dstrect) (toDegrees rotation) rotationCenter [] >> return m
+  textures <- renderPicture (RenderState eye3 renderer surfaceMap font backgroundColor) outerPicture
+  renderFinish renderer
+  mapM_ destroyTexture textures
 
-
-
-data MainLoopContext world = MainLoopContext { _mlImages :: SurfaceMap
-                                             , _mlFont :: TTFFont
-                                             , _mlAnims :: AnimMap
-                                             , _mlRenderer :: SDLT.Renderer
+data MainLoopContext world = MainLoopContext { _mlImages          :: SurfaceMap
+                                             , _mlFont            :: TTFFont
+                                             , _mlAnims           :: AnimMap
+                                             , _mlRenderer        :: SDLT.Renderer
                                              , _mlBackgroundColor :: BackgroundColor
-                                             , _mlStepsPerSecond :: StepsPerSecond
-                                             , _mlWorldToPicture :: world -> Picture
-                                             , _mlEventHandler :: Event -> world -> world
-                                             , _mlSimulationStep :: TimeDelta -> world -> world
+                                             , _mlStepsPerSecond  :: StepsPerSecond
+                                             , _mlWorldToPicture  :: world -> Picture
+                                             , _mlEventHandler    :: Event -> world -> world
+                                             , _mlSimulationStep  :: TimeDelta -> world -> world
                                              }
 
 $(makeLenses ''MainLoopContext)
@@ -204,20 +268,19 @@ mainLoop context prevTime prevDelta world = do
       maxDelta = fromSeconds . recip . fromIntegral $ context ^. mlStepsPerSecond
       (simulationSteps,newDelta) = splitDelta (timeDelta + prevDelta) maxDelta
   let newWorld = foldr (context ^. mlSimulationStep) worldAfterEvents (replicate simulationSteps maxDelta)
-  wrenchRender (context ^. mlRenderer) (context ^. mlSurfaceMap) (context ^. mlBackgroundColor) (context ^. mlSurfaceMap) ((context ^. mlWorldToPicture) world)
+  wrenchRender (context ^. mlRenderer) (context ^. mlImages) (context ^. mlFont) (context ^. mlBackgroundColor) ((context ^. mlWorldToPicture) world)
   mainLoop context newTime newDelta newWorld
-
 
 wrenchPlay :: WindowTitle -> ViewportSize -> MediaFilePath -> BackgroundColor -> world -> StepsPerSecond -> (world -> Picture) -> (Event -> world -> world) -> (TimeDelta -> world -> world) -> IO ()
 wrenchPlay windowTitle viewportSize mediaPath backgroundColor initialWorld stepsPerSecond worldToPicture eventHandler simulationStep =
   withFontInit $
     withImgInit $
       withWindow windowTitle $ \window ->
-        withRenderer window (floor (viewportSize ^. _x)) (floor (viewportSize ^. _y)) $ \renderer -> do
+        withRenderer window (viewportSize ^. _x ^. floored) (viewportSize ^. _y ^. floored) $ \renderer -> do
           (images,anims) <- readMediaFiles renderer mediaPath
           stdfont <- SDLTtf.openFont (mediaPath <> "/stdfont.ttf") 15
           time <- getTicks
           mainLoop (MainLoopContext images stdfont anims renderer backgroundColor stepsPerSecond worldToPicture eventHandler simulationStep) time 0 initialWorld
 
 main :: IO ()
-main = return ()
+main = wrenchPlay "window title" (V2 640 480) "media" colorsWhite 0 1 (const $ Pictures [InColor colorsBlack ((Translate (V2 100 100) (Text "car"))),Sprite "car" RenderPositionCenter]) (\_ _ -> 0) (\_ _ -> 0)

@@ -9,6 +9,7 @@ module Wrench.Rectangle(
 
 import Wrench.Point
 import Control.Lens.TH
+import Control.Lens.Getter(to,Getter)
 
 data Rectangle = Rectangle { _rectLeftTop     :: Point
                            , _rectRightBottom :: Point
@@ -17,7 +18,8 @@ data Rectangle = Rectangle { _rectLeftTop     :: Point
 rectangleFromPoints :: Point -> Point -> Rectangle
 rectangleFromPoints = Rectangle
 
-rectangleDimensions :: Rectangle -> Point
-rectangleDimensions (Rectangle lt rb) = rb - lt
+rectangleDimensions :: Getter Rectangle Point
+rectangleDimensions = to rectangleDimensions'
+ where rectangleDimensions' (Rectangle lt rb) = rb - lt
 
 $(makeLenses ''Rectangle)
