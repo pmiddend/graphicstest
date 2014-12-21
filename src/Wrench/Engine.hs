@@ -1,29 +1,26 @@
-{-# LANGUAGE RankNTypes      #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving      #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE RankNTypes                 #-}
+{-# LANGUAGE TemplateHaskell            #-}
 module Wrench.Engine(
     Picture(..)
   , wrenchPlay
   , RenderPositionMode(..)
   ) where
 
-import Wrench.Angular
 import           Control.Exception         (bracket, bracket_)
-import           Control.Lens              ((^.),(&))
+import           Control.Lens              ((&), (^.))
 import           Control.Lens.Getter       (Getter, to)
-import Control.Monad(liftM)
 import           Control.Lens.Iso          (Iso', from, iso)
-import           Control.Lens.Setter       ((.~),(%~),(+~))
+import           Control.Lens.Setter       ((%~), (+~), (.~))
 import           Control.Lens.TH           (makeLenses)
+import           Control.Monad             (liftM)
 import           Control.Monad.IO.Class    (MonadIO, liftIO)
 import           Control.Monad.Loops       (unfoldM)
 import           Data.Map.Strict           ((!))
 import           Data.Monoid
 import           Data.Text                 (Text, pack, unpack)
 import qualified Graphics.UI.SDL.Color     as SDLC
-import           Graphics.UI.SDL.Events    (Event (..), Event (..),
-                                            EventData (..), KeyMovement (..),
-                                            pollEvent)
+import qualified Graphics.UI.SDL.Events as SDLE
 import           Graphics.UI.SDL.Image     as SDLImage
 import qualified Graphics.UI.SDL.Rect      as SDLRect
 import qualified Graphics.UI.SDL.Render    as SDLR
@@ -31,11 +28,12 @@ import qualified Graphics.UI.SDL.TTF       as SDLTtf
 import           Graphics.UI.SDL.TTF.Types (TTFFont)
 import qualified Graphics.UI.SDL.Types     as SDLT
 import qualified Graphics.UI.SDL.Video     as SDLV
-import           Linear.Matrix             (M33, eye3, (!*),
-                                            (!*!))
+import           Linear.Matrix             (M33, eye3, (!*), (!*!))
 import           Linear.V2                 (V2 (..), _x, _y)
 import           Linear.V3                 (V3 (..))
 import           Numeric.Lens              (dividing)
+import           Wrench.Angular
+import           Wrench.Color
 import           Wrench.FloatType          (FloatType)
 import           Wrench.ImageData          (AnimMap, SurfaceMap, readMediaFiles)
 import           Wrench.Point              (Point)
@@ -43,7 +41,6 @@ import           Wrench.Rectangle          (Rectangle, rectLeftTop,
                                             rectangleDimensions,
                                             rectangleFromPoints)
 import           Wrench.Time
-import Wrench.Color
 
 type SpriteIdentifier = String
 
@@ -124,8 +121,8 @@ renderClear renderer = do
 renderFinish :: SDLT.Renderer -> IO ()
 renderFinish = SDLR.renderPresent
 
-toV3 :: Num a => V2 a -> V3 a
-toV3 (V2 x y) = V3 x y 1
+-- toV3 :: Num a => V2 a -> V3 a
+-- toV3 (V2 x y) = V3 x y 1
 
 toV2 :: Getter (V3 a) (V2 a)
 toV2 = to toV2'
@@ -142,8 +139,8 @@ mkRotation r = V3 (V3 cs (-sn) 0) (V3 sn cs 0) (V3 0 0 1)
 mkScale :: Point -> M33 FloatType
 mkScale p = V3 (V3 (p ^. _x) 0 0) (V3 0 (p ^. _y) 0) (V3 0 0 1)
 
-mkTransformation :: FloatType -> Point -> M33 FloatType
-mkTransformation r p = mkTranslation p !*! mkRotation r
+-- mkTransformation :: FloatType -> Point -> M33 FloatType
+-- mkTransformation r p = mkTranslation p !*! mkRotation r
 
 toSdlRect :: Rectangle -> SDLRect.Rect
 toSdlRect r = SDLRect.Rect (r ^. rectLeftTop ^. _x ^. floored) (r ^. rectLeftTop ^. _y ^. floored) (r ^. rectangleDimensions ^. _x ^. floored) (r ^. rectangleDimensions ^. _y ^. floored)
@@ -225,14 +222,26 @@ data MainLoopContext world = MainLoopContext { _mlImages          :: SurfaceMap
                                              , _mlBackgroundColor :: BackgroundColor
                                              , _mlStepsPerSecond  :: StepsPerSecond
                                              , _mlWorldToPicture  :: world -> Picture
-                                             , _mlEventHandler    :: Event -> world -> world
+                                             , _mlEventHandler    :: SDLE.Event -> world -> world
                                              , _mlSimulationStep  :: TimeDelta -> world -> world
                                              }
 
+{-
+data KeyMovement = KeyUp | KeyDown
+  deriving (Eq, Show)
+
+data Event
+  = Keyboard { keyMovement :: KeyMovement
+             , keyRepeat :: Bool
+             , keySym :: Keysym
+             }
+  | Quit
+-}
+
 $(makeLenses ''MainLoopContext)
 
-pollEvents :: IO [Event]
-pollEvents = unfoldM pollEvent
+pollEvents :: IO [SDLE.Event]
+pollEvents = unfoldM SDLE.pollEvent
 
 type PreviousTime = TimeTicks
 type SinceLastSimulation = TimeDelta
@@ -253,7 +262,7 @@ mainLoop context prevTime prevDelta world = do
   wrenchRender (context ^. mlRenderer) (context ^. mlImages) (context ^. mlFont) (context ^. mlBackgroundColor) ((context ^. mlWorldToPicture) world)
   mainLoop context newTime newDelta newWorld
 
-wrenchPlay :: WindowTitle -> ViewportSize -> MediaFilePath -> BackgroundColor -> world -> StepsPerSecond -> (world -> Picture) -> (Event -> world -> world) -> (TimeDelta -> world -> world) -> IO ()
+wrenchPlay :: WindowTitle -> ViewportSize -> MediaFilePath -> BackgroundColor -> world -> StepsPerSecond -> (world -> Picture) -> (SDLE.Event -> world -> world) -> (TimeDelta -> world -> world) -> IO ()
 wrenchPlay windowTitle viewportSize mediaPath backgroundColor initialWorld stepsPerSecond worldToPicture eventHandler simulationStep =
   withFontInit $
     withImgInit $
