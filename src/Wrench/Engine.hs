@@ -5,15 +5,19 @@ module Wrench.Engine(
     Picture(..)
   , wrenchPlay
   , RenderPositionMode(..)
+  , Event(..)
+  , Keysym(..)
   ) where
 
 import           Control.Exception         (bracket, bracket_)
 import           Control.Lens              ((&), (^.))
 import           Control.Lens.Getter       (Getter, to)
+import Data.Word(Word16)
+import Data.Maybe(mapMaybe)
 import           Control.Lens.Iso          (Iso', from, iso)
 import           Control.Lens.Setter       ((%~), (+~), (.~))
 import           Control.Lens.TH           (makeLenses)
-import           Control.Monad             (liftM)
+import           Control.Monad             (liftM,unless)
 import           Control.Monad.IO.Class    (MonadIO, liftIO)
 import           Control.Monad.Loops       (unfoldM)
 import           Data.Map.Strict           ((!))
@@ -21,6 +25,7 @@ import           Data.Monoid
 import           Data.Text                 (Text, pack, unpack)
 import qualified Graphics.UI.SDL.Color     as SDLC
 import qualified Graphics.UI.SDL.Events as SDLE
+import qualified Graphics.UI.SDL.Keysym as SDLKeysym
 import           Graphics.UI.SDL.Image     as SDLImage
 import qualified Graphics.UI.SDL.Rect      as SDLRect
 import qualified Graphics.UI.SDL.Render    as SDLR
@@ -34,6 +39,8 @@ import           Linear.V3                 (V3 (..))
 import           Numeric.Lens              (dividing)
 import           Wrench.Angular
 import           Wrench.Color
+import           Wrench.Keycode
+import           Wrench.Scancode
 import           Wrench.FloatType          (FloatType)
 import           Wrench.ImageData          (AnimMap, SurfaceMap, readMediaFiles)
 import           Wrench.Point              (Point)
@@ -222,12 +229,17 @@ data MainLoopContext world = MainLoopContext { _mlImages          :: SurfaceMap
                                              , _mlBackgroundColor :: BackgroundColor
                                              , _mlStepsPerSecond  :: StepsPerSecond
                                              , _mlWorldToPicture  :: world -> Picture
-                                             , _mlEventHandler    :: SDLE.Event -> world -> world
+                                             , _mlEventHandler    :: Event -> world -> world
                                              , _mlSimulationStep  :: TimeDelta -> world -> world
                                              }
 
-{-
 data KeyMovement = KeyUp | KeyDown
+  deriving (Eq, Show)
+
+data Keysym = Keysym { keyScancode :: Scancode
+                     , keyKeycode :: Keycode
+                     , keyModifiers :: Word16
+                     }
   deriving (Eq, Show)
 
 data Event
@@ -236,7 +248,22 @@ data Event
              , keySym :: Keysym
              }
   | Quit
--}
+
+isQuitEvent :: Event -> Bool
+isQuitEvent Quit = True
+isQuitEvent _ = False
+
+fromSdlEvent :: Getter SDLE.Event (Maybe Event)
+fromSdlEvent = to fromSdlEvent'
+  where fromSdlEvent' (SDLE.Event _ edata) = fromSdlEvent'' edata
+        fromSdlEvent'' (SDLE.Keyboard movement _ r sym) = Just $ Keyboard (fromSdlKeyMovement movement) r (fromSdlSym sym)
+        fromSdlEvent'' (SDLE.Quit) = Just Quit
+        fromSdlEvent'' _ = Nothing
+        fromSdlKeyMovement SDLE.KeyUp = KeyUp
+        fromSdlKeyMovement SDLE.KeyDown = KeyDown
+        fromSdlSym (SDLKeysym.Keysym scancode keycode modifiers) = Keysym (fromSdlScancode scancode) (fromSdlKeycode keycode) modifiers
+        fromSdlScancode = undefined
+        fromSdlKeycode = undefined
 
 $(makeLenses ''MainLoopContext)
 
@@ -253,16 +280,17 @@ splitDelta maxDelta n = let iterations = floor $ toSeconds n / toSeconds maxDelt
 mainLoop :: MainLoopContext world -> PreviousTime -> SinceLastSimulation -> world -> IO ()
 mainLoop context prevTime prevDelta world = do
   events <- pollEvents
-  let worldAfterEvents = foldr (context ^. mlEventHandler) world events
+  let mappedEvents = mapMaybe (^. fromSdlEvent) events
+      worldAfterEvents = foldr (context ^. mlEventHandler) world mappedEvents
   newTime <- getTicks
   let timeDelta = newTime `tickDelta` prevTime
       maxDelta = fromSeconds . recip . fromIntegral $ context ^. mlStepsPerSecond
       (simulationSteps,newDelta) = splitDelta (timeDelta + prevDelta) maxDelta
   let newWorld = foldr (context ^. mlSimulationStep) worldAfterEvents (replicate simulationSteps maxDelta)
   wrenchRender (context ^. mlRenderer) (context ^. mlImages) (context ^. mlFont) (context ^. mlBackgroundColor) ((context ^. mlWorldToPicture) world)
-  mainLoop context newTime newDelta newWorld
+  unless (any isQuitEvent mappedEvents) $ mainLoop context newTime newDelta newWorld
 
-wrenchPlay :: WindowTitle -> ViewportSize -> MediaFilePath -> BackgroundColor -> world -> StepsPerSecond -> (world -> Picture) -> (SDLE.Event -> world -> world) -> (TimeDelta -> world -> world) -> IO ()
+wrenchPlay :: WindowTitle -> ViewportSize -> MediaFilePath -> BackgroundColor -> world -> StepsPerSecond -> (world -> Picture) -> (Event -> world -> world) -> (TimeDelta -> world -> world) -> IO ()
 wrenchPlay windowTitle viewportSize mediaPath backgroundColor initialWorld stepsPerSecond worldToPicture eventHandler simulationStep =
   withFontInit $
     withImgInit $

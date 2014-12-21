@@ -9,7 +9,6 @@ import Wrench.Color
 
 main :: IO ()
 main = do
-  print (Degrees 30 ^. from degrees)
   wrenchPlay
     "window title"
     (V2 640 480)
