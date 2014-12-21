@@ -1,4 +1,5 @@
 {-# LANGUAGE RankNTypes      #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving      #-}
 {-# LANGUAGE TemplateHaskell #-}
 module Main where
 
@@ -7,7 +8,7 @@ import           Control.Lens              ((^.),(&))
 import           Control.Lens.Getter       (Getter, to, use)
 import Control.Monad(liftM)
 import           Control.Lens.Iso          (Iso', from, iso)
-import           Control.Lens.Setter       ((<>=),(%=),(.=),(.~),(%~))
+import           Control.Lens.Setter       ((<>=),(%=),(.=),(.~),(%~),(+~))
 import           Control.Lens.TH           (makeLenses)
 import           Control.Monad.IO.Class    (MonadIO, liftIO)
 import           Control.Monad.Loops       (unfoldM)
@@ -24,6 +25,7 @@ import           Graphics.UI.SDL.Image     as SDLImage
 import qualified Graphics.UI.SDL.Rect      as SDLRect
 import qualified Graphics.UI.SDL.Render    as SDLR
 import qualified Graphics.UI.SDL.TTF       as SDLTtf
+import Debug.Trace(trace)
 import           Graphics.UI.SDL.TTF.Types (TTFFont)
 import qualified Graphics.UI.SDL.Types     as SDLT
 import qualified Graphics.UI.SDL.Video     as SDLV
@@ -31,7 +33,7 @@ import           Linear.Matrix             (M33, eye3, mkTransformation, (!*),
                                             (!*!))
 import           Linear.V2                 (V2 (..), _x, _y)
 import           Linear.V3                 (V3 (..))
-import           Numeric.Lens              (dividing)
+import           Numeric.Lens              (dividing,multiplying)
 import           Wrench.FloatType          (FloatType)
 import           Wrench.ImageData          (AnimMap, SurfaceMap, readMediaFiles)
 import           Wrench.Point              (Point)
@@ -63,13 +65,27 @@ colorsWhite = mkColorFromRgba 255 255 255 255
 colorsBlack :: Color
 colorsBlack = mkColorFromRgba 0 0 0 255
 
+newtype Radians = Radians { _getRadians :: FloatType } deriving(Show,Eq,Num)
+$(makeLenses ''Radians)
+newtype Degrees = Degrees { _getDegrees :: FloatType } deriving(Show,Eq,Num)
+$(makeLenses ''Degrees)
+
+degrees :: Iso' Radians Degrees
+degrees = iso radToDeg degToRad
+
+degToRad :: Degrees -> Radians
+degToRad (Degrees x) = Radians (x * pi / 180)
+
+radToDeg :: Radians -> Degrees
+radToDeg (Radians x) = Degrees (x * 180 / pi)
+
 data Picture = Line Point Point
              | Text String
              | Sprite SpriteIdentifier RenderPositionMode
              | Blank
              | InColor Color Picture
              | Translate Point Picture
-             | Rotate FloatType Picture
+             | Rotate Radians Picture
              | Scale Point Picture
              | Pictures [Picture]
              deriving(Show,Eq)
@@ -159,11 +175,6 @@ mkScale p = V3 (V3 (p ^. _x) 0 0) (V3 0 (p ^. _y) 0) (V3 0 0 1)
 mkTransformation :: FloatType -> Point -> M33 FloatType
 mkTransformation r p = mkTranslation p !*! mkRotation r
 
-data Radians = Radians { getRadians :: FloatType } deriving(Show,Eq)
-
-toDegrees :: Radians -> FloatType
-toDegrees = (/pi).(*180).getRadians
-
 toSdlRect :: Rectangle -> SDLRect.Rect
 toSdlRect r = SDLRect.Rect (r ^. rectLeftTop ^. _x ^. floored) (r ^. rectLeftTop ^. _y ^. floored) (r ^. rectangleDimensions ^. _x ^. floored) (r ^. rectangleDimensions ^. _y ^. floored)
 
@@ -187,6 +198,7 @@ data RenderState = RenderState {   _rsTransformation :: M33 FloatType
                                  , _rsSurfaces       :: SurfaceMap
                                  , _rsFont           :: TTFFont
                                  , _rsColor          :: Color
+                                 , _rsRotation       :: Radians
                                }
 
 type RenderOutput = [SDLT.Texture]
@@ -206,7 +218,8 @@ renderPicture rs p = case p of
                               renderPicture (rs & rsColor .~ color) picture
   Pictures ps -> concatMapM (renderPicture rs) ps
   Translate point picture -> renderPicture (rs & rsTransformation %~ (!*! mkTranslation point)) picture
-  Rotate r picture -> renderPicture (rs & rsTransformation %~ (!*! mkRotation r)) picture
+--   Rotate r picture -> renderPicture (rs & rsTransformation %~ (!*! mkRotation (r ^. getRadians))) picture
+  Rotate r picture -> renderPicture (rs & ((rsRotation +~ r) . (rsTransformation %~ (!*! mkRotation (r ^. getRadians))))) picture
   Scale s picture -> renderPicture (rs & rsTransformation %~ (!*! mkScale s)) picture
   Sprite identifier positionMode -> do
     let surfaces = rs ^. rsSurfaces
@@ -217,12 +230,12 @@ renderPicture rs p = case p of
         pos = case positionMode of
                         RenderPositionCenter -> origin - (rectangle ^. rectangleDimensions ^. dividing 2)
                         RenderPositionTopLeft -> origin
-        rot = 0
+        rot = rs ^. rsRotation ^. degrees
         rotCenter = Nothing
         flipFlags = []
         srcRect = Just (rectangle ^. from wrenchRect)
         destRect = Just (rectangleFromPoints pos (pos + (rectangle ^. rectangleDimensions)) ^. from wrenchRect)
-    liftIO $ SDLR.renderCopyEx renderer texture srcRect destRect rot rotCenter flipFlags
+    liftIO $ SDLR.renderCopyEx renderer texture srcRect destRect (rot ^. getDegrees) rotCenter flipFlags
     return []
 
 destroyTexture :: MonadIO m => SDLT.Texture -> m ()
@@ -232,7 +245,7 @@ wrenchRender :: SDLT.Renderer -> SurfaceMap -> TTFFont -> BackgroundColor -> Pic
 wrenchRender renderer surfaceMap font backgroundColor outerPicture = do
   setRenderDrawColor renderer backgroundColor
   renderClear renderer
-  textures <- renderPicture (RenderState eye3 renderer surfaceMap font backgroundColor) outerPicture
+  textures <- renderPicture (RenderState eye3 renderer surfaceMap font backgroundColor 0) outerPicture
   renderFinish renderer
   mapM_ destroyTexture textures
 
@@ -283,4 +296,6 @@ wrenchPlay windowTitle viewportSize mediaPath backgroundColor initialWorld steps
           mainLoop (MainLoopContext images stdfont anims renderer backgroundColor stepsPerSecond worldToPicture eventHandler simulationStep) time 0 initialWorld
 
 main :: IO ()
-main = wrenchPlay "window title" (V2 640 480) "media" colorsWhite 0 1 (const $ Pictures [InColor colorsBlack ((Translate (V2 100 100) (Text "car"))),Sprite "car" RenderPositionCenter]) (\_ _ -> 0) (\_ _ -> 0)
+main = do
+  print (Degrees 30 ^. from degrees)
+  wrenchPlay "window title" (V2 640 480) "media" colorsWhite 0 1 (const $ Rotate (Degrees 90 ^. from degrees) $ Sprite "car" RenderPositionCenter) (\_ _ -> 0) (\_ _ -> 0)

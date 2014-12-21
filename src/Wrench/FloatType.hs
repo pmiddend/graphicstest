@@ -1,3 +1,3 @@
 module Wrench.FloatType where
 
-type FloatType = Float
+type FloatType = Double
