@@ -8,6 +8,7 @@ module Wrench.Engine(
   , Event(..)
   , Keysym(..)
   , SpriteIdentifier
+  , KeyMovement(..)
   ) where
 
 import           Control.Exception         (bracket, bracket_)
@@ -28,6 +29,7 @@ import           Data.Text                 (Text, pack, unpack)
 import qualified Graphics.UI.SDL.Color     as SDLC
 import qualified Graphics.UI.SDL.Events as SDLE
 import qualified Graphics.UI.SDL.Keysym as SDLKeysym
+import qualified Graphics.UI.SDL.Keycode as SDLKeycode
 import           Graphics.UI.SDL.Image     as SDLImage
 import qualified Graphics.UI.SDL.Rect      as SDLRect
 import qualified Graphics.UI.SDL.Render    as SDLR
@@ -42,7 +44,6 @@ import           Numeric.Lens              (dividing)
 import           Wrench.Angular
 import           Wrench.Color
 import           Wrench.Keycode
-import           Wrench.Scancode
 import           Wrench.FloatType          (FloatType)
 import           Wrench.ImageData          (AnimMap, SurfaceMap, readMediaFiles)
 import           Wrench.Point              (Point)
@@ -240,8 +241,7 @@ data MainLoopContext world = MainLoopContext { _mlImages          :: SurfaceMap
 data KeyMovement = KeyUp | KeyDown
   deriving (Eq, Show)
 
-data Keysym = Keysym { keyScancode :: Scancode
-                     , keyKeycode :: Keycode
+data Keysym = Keysym { keyKeycode :: Keycode
                      , keyModifiers :: Word16
                      }
   deriving (Eq, Show)
@@ -265,9 +265,8 @@ fromSdlEvent = to fromSdlEvent'
         fromSdlEvent'' _ = Nothing
         fromSdlKeyMovement SDLE.KeyUp = KeyUp
         fromSdlKeyMovement SDLE.KeyDown = KeyDown
-        fromSdlSym (SDLKeysym.Keysym scancode keycode modifiers) = Keysym (fromSdlScancode scancode) (fromSdlKeycode keycode) modifiers
-        fromSdlScancode = undefined
-        fromSdlKeycode = undefined
+        fromSdlSym (SDLKeysym.Keysym scancode keycode modifiers) = Keysym (fromSdlKeycode keycode) modifiers
+        fromSdlKeycode SDLKeycode.Up = Up
 
 $(makeLenses ''MainLoopContext)
 
@@ -289,7 +288,7 @@ mainLoop context prevTime prevDelta world = do
   newTime <- getTicks
   let timeDelta = newTime `tickDelta` prevTime
       maxDelta = fromSeconds . recip . fromIntegral $ context ^. mlStepsPerSecond
-      (simulationSteps,newDelta) = splitDelta (timeDelta + prevDelta) maxDelta
+      (simulationSteps,newDelta) = splitDelta maxDelta (timeDelta + prevDelta)
   let newWorld = foldr (context ^. mlSimulationStep) worldAfterEvents (replicate simulationSteps maxDelta)
   wrenchRender (context ^. mlRenderer) (context ^. mlImages) (context ^. mlFont) (context ^. mlBackgroundColor) ((context ^. mlWorldToPicture) world)
   unless (any isQuitEvent mappedEvents) $ mainLoop context newTime newDelta newWorld

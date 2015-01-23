@@ -5,7 +5,9 @@ import Control.Lens(from,(^.))
 import Wrench.Engine(wrenchPlay,Picture(..),RenderPositionMode(..))
 import Wrench.Angular
 import Linear.V2
+import Wrench.Time
 import Wrench.Color
+import Debug.Trace(traceShowId)
 
 main :: IO ()
 main = do
@@ -16,6 +18,6 @@ main = do
     colorsWhite
     0
     1
-    (const $ Translate (V2 100 100) $ Rotate (Degrees 90 ^. from degrees) $ Sprite "car" RenderPositionCenter)
+    (\td -> Translate (V2 100 100) $ Rotate (Degrees td ^. from degrees) $ Sprite "car" RenderPositionCenter)
     (\_ _ -> 0)
-    (\_ _ -> 0)
+    (\td _ -> traceShowId (toSeconds td))
