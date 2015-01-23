@@ -7,6 +7,7 @@ module Wrench.Engine(
   , RenderPositionMode(..)
   , Event(..)
   , Keysym(..)
+  , SpriteIdentifier
   ) where
 
 import           Control.Exception         (bracket, bracket_)
@@ -14,13 +15,14 @@ import           Control.Lens              ((&), (^.))
 import           Control.Lens.Getter       (Getter, to)
 import Data.Word(Word16)
 import Data.Maybe(mapMaybe)
+import Prelude hiding (lookup)
 import           Control.Lens.Iso          (Iso', from, iso)
 import           Control.Lens.Setter       ((%~), (+~), (.~))
 import           Control.Lens.TH           (makeLenses)
 import           Control.Monad             (liftM,unless)
 import           Control.Monad.IO.Class    (MonadIO, liftIO)
 import           Control.Monad.Loops       (unfoldM)
-import           Data.Map.Strict           ((!))
+import           Data.Map.Strict           (lookup)
 import           Data.Monoid
 import           Data.Text                 (Text, pack, unpack)
 import qualified Graphics.UI.SDL.Color     as SDLC
@@ -198,18 +200,20 @@ renderPicture rs p = case p of
     let surfaces = rs ^. rsSurfaces
         m = rs ^. rsTransformation
         renderer = rs ^. rsRenderer
-        (texture,rectangle) = surfaces ! pack identifier
-        origin = (m !* V3 0 0 1) ^. toV2
-        pos = case positionMode of
-                        RenderPositionCenter -> origin - (rectangle ^. rectangleDimensions ^. dividing 2)
-                        RenderPositionTopLeft -> origin
-        rot = rs ^. rsRotation ^. degrees
-        rotCenter = Nothing
-        flipFlags = []
-        srcRect = Just (rectangle ^. from wrenchRect)
-        destRect = Just (rectangleFromPoints pos (pos + (rectangle ^. rectangleDimensions)) ^. from wrenchRect)
-    liftIO $ SDLR.renderCopyEx renderer texture srcRect destRect (rot ^. getDegrees) rotCenter flipFlags
-    return []
+    case pack identifier `lookup` surfaces of
+      Nothing -> error $ "Couldn't find image \"" <> identifier <> "\""
+      Just (texture,rectangle) -> do
+        let origin = (m !* V3 0 0 1) ^. toV2
+            pos = case positionMode of
+                            RenderPositionCenter -> origin - (rectangle ^. rectangleDimensions ^. dividing 2)
+                            RenderPositionTopLeft -> origin
+            rot = rs ^. rsRotation ^. degrees
+            rotCenter = Nothing
+            flipFlags = []
+            srcRect = Just (rectangle ^. from wrenchRect)
+            destRect = Just (rectangleFromPoints pos (pos + (rectangle ^. rectangleDimensions)) ^. from wrenchRect)
+        liftIO $ SDLR.renderCopyEx renderer texture srcRect destRect (rot ^. getDegrees) rotCenter flipFlags
+        return []
 
 destroyTexture :: MonadIO m => SDLT.Texture -> m ()
 destroyTexture t = liftIO $ SDLR.destroyTexture t
@@ -297,6 +301,7 @@ wrenchPlay windowTitle viewportSize mediaPath backgroundColor initialWorld steps
       withWindow windowTitle $ \window ->
         withRenderer window (viewportSize ^. _x ^. floored) (viewportSize ^. _y ^. floored) $ \renderer -> do
           (images,anims) <- readMediaFiles renderer mediaPath
+          putStrLn $ "Read media files: " <> show images
           stdfont <- SDLTtf.openFont (mediaPath <> "/stdfont.ttf") 15
           time <- getTicks
           mainLoop (MainLoopContext images stdfont anims renderer backgroundColor stepsPerSecond worldToPicture eventHandler simulationStep) time 0 initialWorld
