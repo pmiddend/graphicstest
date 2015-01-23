@@ -43,7 +43,7 @@ import           Linear.V3                 (V3 (..))
 import           Numeric.Lens              (dividing)
 import           Wrench.Angular
 import           Wrench.Color
-import           Wrench.Keycode
+import qualified Wrench.Keycode as Wrenchkeycode
 import           Wrench.FloatType          (FloatType)
 import           Wrench.ImageData          (AnimMap, SurfaceMap, readMediaFiles)
 import           Wrench.Point              (Point)
@@ -241,7 +241,7 @@ data MainLoopContext world = MainLoopContext { _mlImages          :: SurfaceMap
 data KeyMovement = KeyUp | KeyDown
   deriving (Eq, Show)
 
-data Keysym = Keysym { keyKeycode :: Keycode
+data Keysym = Keysym { keyKeycode :: Wrenchkeycode.Keycode
                      , keyModifiers :: Word16
                      }
   deriving (Eq, Show)
@@ -266,7 +266,10 @@ fromSdlEvent = to fromSdlEvent'
         fromSdlKeyMovement SDLE.KeyUp = KeyUp
         fromSdlKeyMovement SDLE.KeyDown = KeyDown
         fromSdlSym (SDLKeysym.Keysym scancode keycode modifiers) = Keysym (fromSdlKeycode keycode) modifiers
-        fromSdlKeycode SDLKeycode.Up = Up
+        fromSdlKeycode SDLKeycode.Up = Wrenchkeycode.Up
+        fromSdlKeycode SDLKeycode.Down = Wrenchkeycode.Down
+        fromSdlKeycode SDLKeycode.Left = Wrenchkeycode.Left
+        fromSdlKeycode SDLKeycode.Right = Wrenchkeycode.Right
 
 $(makeLenses ''MainLoopContext)
 
