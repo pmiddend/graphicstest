@@ -9,28 +9,28 @@ module Wrench.Engine(
   , Keysym(..)
   , SpriteIdentifier
   , KeyMovement(..)
+  , ViewportSize
   ) where
 
 import           Control.Exception         (bracket, bracket_)
 import           Control.Lens              ((&), (^.))
 import           Control.Lens.Getter       (Getter, to)
-import Data.Word(Word16)
-import Data.Maybe(mapMaybe)
-import Prelude hiding (lookup)
 import           Control.Lens.Iso          (Iso', from, iso)
 import           Control.Lens.Setter       ((%~), (+~), (.~))
 import           Control.Lens.TH           (makeLenses)
-import           Control.Monad             (liftM,unless)
+import           Control.Monad             (liftM, unless)
 import           Control.Monad.IO.Class    (MonadIO, liftIO)
 import           Control.Monad.Loops       (unfoldM)
 import           Data.Map.Strict           (lookup)
+import           Data.Maybe                (mapMaybe)
 import           Data.Monoid
 import           Data.Text                 (Text, pack, unpack)
+import           Data.Word                 (Word16)
 import qualified Graphics.UI.SDL.Color     as SDLC
-import qualified Graphics.UI.SDL.Events as SDLE
-import qualified Graphics.UI.SDL.Keysym as SDLKeysym
-import qualified Graphics.UI.SDL.Keycode as SDLKeycode
+import qualified Graphics.UI.SDL.Events    as SDLE
 import           Graphics.UI.SDL.Image     as SDLImage
+import qualified Graphics.UI.SDL.Keycode   as SDLKeycode
+import qualified Graphics.UI.SDL.Keysym    as SDLKeysym
 import qualified Graphics.UI.SDL.Rect      as SDLRect
 import qualified Graphics.UI.SDL.Render    as SDLR
 import qualified Graphics.UI.SDL.TTF       as SDLTtf
@@ -41,11 +41,12 @@ import           Linear.Matrix             (M33, eye3, (!*), (!*!))
 import           Linear.V2                 (V2 (..), _x, _y)
 import           Linear.V3                 (V3 (..))
 import           Numeric.Lens              (dividing)
+import           Prelude                   hiding (lookup)
 import           Wrench.Angular
 import           Wrench.Color
-import qualified Wrench.Keycode as Wrenchkeycode
 import           Wrench.FloatType          (FloatType)
 import           Wrench.ImageData          (AnimMap, SurfaceMap, readMediaFiles)
+import qualified Wrench.Keycode            as Wrenchkeycode
 import           Wrench.Point              (Point)
 import           Wrench.Rectangle          (Rectangle, rectLeftTop,
                                             rectangleDimensions,
@@ -110,13 +111,11 @@ withWindow title callback = SDLV.withWindow title (SDLT.Position SDLV.windowPosU
         windowFlags :: [SDLT.WindowFlag]
         windowFlags = [SDLT.WindowResizable]
 
-withRenderer :: SDLT.Window -> Int -> Int -> (SDLT.Renderer -> IO a) -> IO a
-withRenderer window screenWidth screenHeight callback =
+withRenderer :: SDLT.Window -> (SDLT.Renderer -> IO a) -> IO a
+withRenderer window callback =
   let acquireResource = SDLR.createRenderer window SDLT.FirstSupported []
       releaseResource = SDLR.destroyRenderer
-  in bracket acquireResource releaseResource $ \renderer -> do
-    SDLR.renderSetLogicalSize renderer (fromIntegral screenWidth) (fromIntegral screenHeight)
-    callback renderer
+  in bracket acquireResource releaseResource callback
 
 setRenderDrawColor :: SDLT.Renderer -> Color -> IO ()
 setRenderDrawColor renderer c = do
@@ -231,9 +230,10 @@ data MainLoopContext world = MainLoopContext { _mlImages          :: SurfaceMap
                                              , _mlFont            :: TTFFont
                                              , _mlAnims           :: AnimMap
                                              , _mlRenderer        :: SDLT.Renderer
+                                             , _mlWindow          :: SDLT.Window
                                              , _mlBackgroundColor :: BackgroundColor
                                              , _mlStepsPerSecond  :: StepsPerSecond
-                                             , _mlWorldToPicture  :: world -> Picture
+                                             , _mlWorldToPicture  :: ViewportSize -> world -> Picture
                                              , _mlEventHandler    :: Event -> world -> world
                                              , _mlSimulationStep  :: TimeDelta -> world -> world
                                              }
@@ -241,15 +241,15 @@ data MainLoopContext world = MainLoopContext { _mlImages          :: SurfaceMap
 data KeyMovement = KeyUp | KeyDown
   deriving (Eq, Show)
 
-data Keysym = Keysym { keyKeycode :: Wrenchkeycode.Keycode
+data Keysym = Keysym { keyKeycode   :: Wrenchkeycode.Keycode
                      , keyModifiers :: Word16
                      }
   deriving (Eq, Show)
 
 data Event
   = Keyboard { keyMovement :: KeyMovement
-             , keyRepeat :: Bool
-             , keySym :: Keysym
+             , keyRepeat   :: Bool
+             , keySym      :: Keysym
              }
   | Quit
 
@@ -265,7 +265,7 @@ fromSdlEvent = to fromSdlEvent'
         fromSdlEvent'' _ = Nothing
         fromSdlKeyMovement SDLE.KeyUp = KeyUp
         fromSdlKeyMovement SDLE.KeyDown = KeyDown
-        fromSdlSym (SDLKeysym.Keysym scancode keycode modifiers) = Keysym (fromSdlKeycode keycode) modifiers
+        fromSdlSym (SDLKeysym.Keysym _ keycode modifiers) = Keysym (fromSdlKeycode keycode) modifiers
         fromSdlKeycode SDLKeycode.Up = Wrenchkeycode.Up
         fromSdlKeycode SDLKeycode.Down = Wrenchkeycode.Down
         fromSdlKeycode SDLKeycode.Left = Wrenchkeycode.Left
@@ -283,9 +283,13 @@ splitDelta :: TimeDelta -> TimeDelta -> (Int,TimeDelta)
 splitDelta maxDelta n = let iterations = floor $ toSeconds n / toSeconds maxDelta
                         in (iterations,n - fromIntegral iterations * maxDelta)
 
+sizeToPoint :: SDLT.Size -> Point
+sizeToPoint (SDLT.Size w h) = V2 (fromIntegral w) (fromIntegral h)
+
 mainLoop :: MainLoopContext world -> PreviousTime -> SinceLastSimulation -> world -> IO ()
 mainLoop context prevTime prevDelta world = do
   events <- pollEvents
+  ws <- SDLV.getWindowSize (context ^. mlWindow)
   let mappedEvents = mapMaybe (^. fromSdlEvent) events
       worldAfterEvents = foldr (context ^. mlEventHandler) world mappedEvents
   newTime <- getTicks
@@ -293,17 +297,30 @@ mainLoop context prevTime prevDelta world = do
       maxDelta = fromSeconds . recip . fromIntegral $ context ^. mlStepsPerSecond
       (simulationSteps,newDelta) = splitDelta maxDelta (timeDelta + prevDelta)
   let newWorld = foldr (context ^. mlSimulationStep) worldAfterEvents (replicate simulationSteps maxDelta)
-  wrenchRender (context ^. mlRenderer) (context ^. mlImages) (context ^. mlFont) (context ^. mlBackgroundColor) ((context ^. mlWorldToPicture) world)
+  wrenchRender
+    (context ^. mlRenderer)
+    (context ^. mlImages)
+    (context ^. mlFont)
+    (context ^. mlBackgroundColor)
+    ((context ^. mlWorldToPicture) (sizeToPoint ws) world)
   unless (any isQuitEvent mappedEvents) $ mainLoop context newTime newDelta newWorld
 
-wrenchPlay :: WindowTitle -> ViewportSize -> MediaFilePath -> BackgroundColor -> world -> StepsPerSecond -> (world -> Picture) -> (Event -> world -> world) -> (TimeDelta -> world -> world) -> IO ()
-wrenchPlay windowTitle viewportSize mediaPath backgroundColor initialWorld stepsPerSecond worldToPicture eventHandler simulationStep =
+wrenchPlay :: WindowTitle ->
+              MediaFilePath ->
+              BackgroundColor ->
+              world ->
+              StepsPerSecond ->
+              (ViewportSize -> world -> Picture) ->
+              (Event -> world -> world) ->
+              (TimeDelta -> world -> world) ->
+              IO ()
+wrenchPlay windowTitle mediaPath backgroundColor initialWorld stepsPerSecond worldToPicture eventHandler simulationStep =
   withFontInit $
     withImgInit $
       withWindow windowTitle $ \window ->
-        withRenderer window (viewportSize ^. _x ^. floored) (viewportSize ^. _y ^. floored) $ \renderer -> do
+        withRenderer window $ \renderer -> do
           (images,anims) <- readMediaFiles renderer mediaPath
           putStrLn $ "Read media files: " <> show images
           stdfont <- SDLTtf.openFont (mediaPath <> "/stdfont.ttf") 15
           time <- getTicks
-          mainLoop (MainLoopContext images stdfont anims renderer backgroundColor stepsPerSecond worldToPicture eventHandler simulationStep) time 0 initialWorld
+          mainLoop (MainLoopContext images stdfont anims renderer window backgroundColor stepsPerSecond worldToPicture eventHandler simulationStep) time 0 initialWorld
