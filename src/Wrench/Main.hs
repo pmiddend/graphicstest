@@ -18,7 +18,7 @@ main = do
   wrenchPlay
     "window title"
     "media"
-    colorsWhite
+    (Just colorsWhite)
     0
     1
     toPicture

@@ -22,7 +22,7 @@ import           Control.Monad             (liftM, unless)
 import           Control.Monad.IO.Class    (MonadIO, liftIO)
 import           Control.Monad.Loops       (unfoldM)
 import           Data.Map.Strict           (lookup)
-import           Data.Maybe                (mapMaybe)
+import           Data.Maybe                (mapMaybe,fromMaybe)
 import           Data.Monoid
 import           Data.Text                 (Text, pack, unpack)
 import           Data.Word                 (Word16)
@@ -72,13 +72,9 @@ instance Monoid Picture where
   mempty = Blank
   mappend a b = Pictures [a,b]
 
-type WindowTitle = String
-
 type ViewportSize = Point
 
 type MediaFilePath = FilePath
-
-type BackgroundColor = Color
 
 type StepsPerSecond = Int
 
@@ -218,11 +214,12 @@ renderPicture rs p = case p of
 destroyTexture :: MonadIO m => SDLT.Texture -> m ()
 destroyTexture t = liftIO $ SDLR.destroyTexture t
 
-wrenchRender :: SDLT.Renderer -> SurfaceMap -> TTFFont -> BackgroundColor -> Picture -> IO ()
+wrenchRender :: SDLT.Renderer -> SurfaceMap -> TTFFont -> Maybe BackgroundColor -> Picture -> IO ()
 wrenchRender renderer surfaceMap font backgroundColor outerPicture = do
-  setRenderDrawColor renderer backgroundColor
-  renderClear renderer
-  textures <- renderPicture (RenderState eye3 renderer surfaceMap font backgroundColor 0) outerPicture
+  maybe (return ()) (\backgroundColor' -> setRenderDrawColor renderer backgroundColor' >> renderClear renderer) backgroundColor
+  --setRenderDrawColor renderer backgroundColor
+  --renderClear renderer
+  textures <- renderPicture (RenderState eye3 renderer surfaceMap font (fromMaybe colorsWhite backgroundColor) 0) outerPicture
   renderFinish renderer
   mapM_ destroyTexture textures
 
@@ -231,7 +228,7 @@ data MainLoopContext world = MainLoopContext { _mlImages          :: SurfaceMap
                                              , _mlAnims           :: AnimMap
                                              , _mlRenderer        :: SDLT.Renderer
                                              , _mlWindow          :: SDLT.Window
-                                             , _mlBackgroundColor :: BackgroundColor
+                                             , _mlBackgroundColor :: Maybe BackgroundColor
                                              , _mlStepsPerSecond  :: StepsPerSecond
                                              , _mlWorldToPicture  :: ViewportSize -> world -> Picture
                                              , _mlEventHandler    :: Event -> world -> world
@@ -305,9 +302,41 @@ mainLoop context prevTime prevDelta world = do
     ((context ^. mlWorldToPicture) (sizeToPoint ws) world)
   unless (any isQuitEvent mappedEvents) $ mainLoop context newTime newDelta newWorld
 
+data SDLPlatform = SDLPlatform {
+    _sdlpRenderer :: SDLT.Renderer
+  , _sdlpBackgroundColor :: Maybe Color
+  , _sdlpSurfaceMap :: (SurfaceMap a,AnimMap)
+  }
+
+$(makeLenses ''SDLPlatform)
+
+instance Platform SDLPlatform where
+  withPlatform windowTitle backgroundColor mediaPath callback = withFontInit $
+    withImgInit $
+      withWindow windowTitle $ \window -> do
+        withRenderer window $ \renderer -> do
+          stdfont <- SDLTtf.openFont (mediaPath <> "/stdfont.ttf") 15
+          surfaceData <- readMediaFiles (SDLT.loadTexture renderer) mediaPath
+          callback (SDLPlatform renderer backgroundColor surfaceData)
+
+wrenchPlay' :: Platform p =>
+              WindowTitle ->
+              MediaFilePath ->
+              Maybe BackgroundColor ->
+              world ->
+              StepsPerSecond ->
+              (ViewportSize -> world -> Picture) ->
+              (Event -> world -> world) ->
+              (TimeDelta -> world -> world) ->
+              IO ()
+wrenchPlay' windowTitle mediaPath backgroundColor initialWorld stepsPerSecond worldToPicture eventHandler simulationStep =
+  withPlatform windowTitle backgroundColor mediaPath $ \platform -> do
+    time <- getTicks
+    mainLoop (MainLoopContext images stdfont anims renderer window backgroundColor stepsPerSecond worldToPicture eventHandler simulationStep) time 0 initialWorld
+
 wrenchPlay :: WindowTitle ->
               MediaFilePath ->
-              BackgroundColor ->
+              Maybe BackgroundColor ->
               world ->
               StepsPerSecond ->
               (ViewportSize -> world -> Picture) ->
