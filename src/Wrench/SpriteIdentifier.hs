@@ -1,3 +1,5 @@
 module Wrench.SpriteIdentifier where
 
-type SpriteIdentifier = String
+import Data.Text(Text)
+
+type SpriteIdentifier = Text

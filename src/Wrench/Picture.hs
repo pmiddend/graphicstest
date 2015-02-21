@@ -6,9 +6,10 @@ import Wrench.SpriteIdentifier
 import Wrench.RenderPositionMode
 import Wrench.Color
 import Wrench.Angular
+import qualified Data.Text as T
 
 data Picture = Line Point Point
-             | Text String
+             | Text T.Text
              | Sprite SpriteIdentifier RenderPositionMode
              | Blank
              | InColor Color Picture

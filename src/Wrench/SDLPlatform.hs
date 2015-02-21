@@ -1,6 +1,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE RankNTypes                 #-}
 {-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE OverloadedStrings            #-}
 module Wrench.SDLPlatform where
 
 import           Control.Applicative
@@ -103,8 +104,8 @@ renderFinish' :: SDLT.Renderer -> IO ()
 renderFinish' = SDLR.renderPresent
 
 
-withWindow :: String -> (SDLT.Window -> IO a) -> IO a
-withWindow title callback = SDLV.withWindow title (SDLT.Position SDLV.windowPosUndefined SDLV.windowPosUndefined) (SDLT.Size (fromIntegral screenAbsoluteWidth) (fromIntegral screenAbsoluteHeight)) windowFlags $ \win -> callback win
+withWindow :: T.Text -> (SDLT.Window -> IO a) -> IO a
+withWindow title callback = SDLV.withWindow (T.unpack title) (SDLT.Position SDLV.windowPosUndefined SDLV.windowPosUndefined) (SDLT.Size (fromIntegral screenAbsoluteWidth) (fromIntegral screenAbsoluteHeight)) windowFlags $ \win -> callback win
   where screenAbsoluteWidth,screenAbsoluteHeight :: Int
         screenAbsoluteWidth = 0
         screenAbsoluteHeight = 0
@@ -133,21 +134,21 @@ withSDLPlatform windowTitle mediaPath cb =
 instance Platform SDLPlatform where
   pollEvents _ = mapMaybe (^. fromSdlEvent) <$> unfoldM SDLE.pollEvent
   spriteDimensions p identifier = 
-    case T.pack identifier `lookup` ( p ^. sdlpSurfaceMap ^. _1 )  of
-      Nothing -> error $ "Couldn't find image \"" <> identifier <> "\""
+    case identifier `lookup` ( p ^. sdlpSurfaceMap ^. _1 )  of
+      Nothing -> error . T.unpack $ "Couldn't find image \"" <> identifier <> "\""
       Just (_,rectangle) -> return rectangle
   renderClear p = renderClear' (p ^. sdlpRenderer)
   renderFinish p = renderFinish' (p ^. sdlpRenderer)
   renderText p s c pos = do
-    texture <- createFontTexture (p ^. sdlpRenderer) (p ^. sdlpFont) (T.pack s) c
-    (width, height) <- SDLTtf.sizeText ( p ^. sdlpFont ) s
+    texture <- createFontTexture (p ^. sdlpRenderer) (p ^. sdlpFont) s c
+    (width, height) <- SDLTtf.sizeText ( p ^. sdlpFont ) (T.unpack s)
     SDLR.renderCopy (p ^. sdlpRenderer) texture Nothing (Just $ SDLRect.Rect (pos ^. _x ^. floored) (pos ^. _y ^. floored) width height)
     destroyTexture texture
   viewportSize p = sizeToPoint <$> SDLV.getWindowSize (p ^. sdlpWindow)
   renderSetDrawColor p c = setRenderDrawColor (p ^. sdlpRenderer) c
   renderDrawSprite p identifier srcRect destRect rads = do
-    case T.pack identifier `lookup` ( p ^. sdlpSurfaceMap ^. _1 )  of
-      Nothing -> error $ "Couldn't find image \"" <> identifier <> "\""
+    case identifier `lookup` ( p ^. sdlpSurfaceMap ^. _1 )  of
+      Nothing -> error . T.unpack $ "Couldn't find image \"" <> identifier <> "\""
       Just (texture,_) -> do
         let rot = rads ^. degrees
             rotCenter = Nothing

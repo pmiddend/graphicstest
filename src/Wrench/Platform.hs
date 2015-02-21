@@ -6,15 +6,16 @@ import Wrench.Point
 import Wrench.SpriteIdentifier
 import Wrench.Rectangle
 import Wrench.Angular
+import qualified Data.Text as T
 
-type WindowTitle = String
+type WindowTitle = T.Text
 type BackgroundColor = Color
 
 class Platform p where
   pollEvents :: p -> IO [Event]
   renderClear :: p -> IO ()
   renderFinish :: p -> IO ()
-  renderText :: p -> String -> Color -> Point -> IO ()
+  renderText :: p -> T.Text -> Color -> Point -> IO ()
   renderSetDrawColor :: p -> Color -> IO ()
   spriteDimensions :: p -> SpriteIdentifier -> IO Rectangle
   viewportSize :: p -> IO Point
