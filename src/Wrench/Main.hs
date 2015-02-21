@@ -7,7 +7,7 @@ import           Linear.V2
 import           Wrench.Angular
 import           Wrench.Color
 import           Wrench.Engine  (Picture (..), RenderPositionMode (..),
-                                 ViewportSize, wrenchPlay)
+                                 ViewportSize, wrenchPlay,withPlatform)
 import           Wrench.Time
 
 toPicture :: ViewportSize -> Double -> Picture
@@ -15,12 +15,12 @@ toPicture _ td = Translate (V2 100 100) $ Rotate (Degrees td ^. from degrees) $ 
 
 main :: IO ()
 main = do
-  wrenchPlay
-    "window title"
-    "media"
-    (Just colorsWhite)
-    0
-    1
-    toPicture
-    (\_ _ -> 0)
-    (\td _ -> traceShowId (toSeconds td))
+  withPlatform "window title" "media" $ \p -> do
+    wrenchPlay
+        p
+        (Just colorsWhite)
+        0
+        1
+        toPicture
+        (\_ _ -> 0)
+        (\td _ -> traceShowId (toSeconds td))

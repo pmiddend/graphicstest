@@ -6,26 +6,16 @@ module Wrench.Engine(
   , wrenchPlay
   , RenderPositionMode(..)
   , Event(..)
-  , Keysym(..)
-  , SpriteIdentifier
-  , KeyMovement(..)
   , ViewportSize
+  , withPlatform
   ) where
 
-import           Control.Exception         (bracket, bracket_)
 import           Control.Lens              ((&), (^.))
 import           Control.Lens.Getter       (Getter, to)
-import           Control.Lens.Iso          (Iso', from, iso)
 import           Control.Lens.Setter       ((%~), (+~), (.~))
 import           Control.Lens.TH           (makeLenses)
-import           Control.Monad             (liftM, unless)
-import           Control.Monad.IO.Class    (MonadIO, liftIO)
-import           Control.Monad.Loops       (unfoldM)
-import           Data.Map.Strict           (lookup)
-import           Data.Maybe                (fromMaybe, mapMaybe)
-import           Data.Monoid
-import           Data.Text                 (Text, pack, unpack)
-import           Data.Word                 (Word16)
+import           Control.Monad             (unless)
+import           Data.Maybe                (fromMaybe)
 import           Linear.Matrix             (M33, eye3, (!*), (!*!))
 import           Linear.V2                 (V2 (..), _x, _y)
 import           Linear.V3                 (V3 (..))
@@ -33,19 +23,18 @@ import           Numeric.Lens              (dividing)
 import           Prelude                   hiding (lookup)
 import           Wrench.Angular
 import           Wrench.Color
+import           Wrench.Event
 import           Wrench.FloatType          (FloatType)
-import           Wrench.SDLPlatform
-import           Wrench.ImageData          (AnimMap, SurfaceMap, readMediaFiles)
-import qualified Wrench.Keycode            as Wrenchkeycode
+import           Wrench.Picture
+import           Wrench.Platform
 import           Wrench.Point              (Point)
-import           Wrench.Rectangle          (Rectangle, rectLeftTop,
-                                            rectangleDimensions,
+import           Wrench.Rectangle          (rectangleDimensions,
                                             rectangleFromPoints)
+import           Wrench.RenderPositionMode
+import           Wrench.SDLPlatform
 import           Wrench.Time
 
 type ViewportSize = Point
-
-type MediaFilePath = FilePath
 
 type StepsPerSecond = Int
 
@@ -78,41 +67,36 @@ data RenderState p = RenderState { _rsTransformation :: M33 FloatType
 
 $(makeLenses ''RenderState)
 
-concatMapM        :: (Monad m) => (a -> m [b]) -> [a] -> m [b]
-concatMapM f xs   =  liftM concat (mapM f xs)
-
 renderPicture :: Platform p => RenderState p -> Picture -> IO ()
 renderPicture rs p = case p of
-  Blank -> return []
+  Blank -> return ()
   Line _ _ -> undefined
-  Text s -> renderText (rs ^. rsPlatform) (pack s) (rs ^. rsColor) (((rs ^. rsTransformation) !* V3 0 0 1) ^. toV2)
-  InColor color picture -> do renderSetDrawColor p color
+  Text s -> renderText (rs ^. rsPlatform) (s) (rs ^. rsColor) (((rs ^. rsTransformation) !* V3 0 0 1) ^. toV2)
+  InColor color picture -> do renderSetDrawColor (rs ^. rsPlatform) color
                               renderPicture (rs & rsColor .~ color) picture
-  Pictures ps -> concatMapM (renderPicture rs) ps
+  Pictures ps -> mapM_ (renderPicture rs) ps
   Translate point picture -> renderPicture (rs & rsTransformation %~ (!*! mkTranslation point)) picture
   Rotate r picture -> renderPicture (rs & ((rsRotation +~ r) . (rsTransformation %~ (!*! mkRotation (r ^. getRadians))))) picture
   Scale s picture -> renderPicture (rs & rsTransformation %~ (!*! mkScale s)) picture
   Sprite identifier positionMode -> do
+    rectangle <- spriteDimensions (rs ^. rsPlatform) identifier
     let m = rs ^. rsTransformation
         origin = (m !* V3 0 0 1) ^. toV2
         pos = case positionMode of
           RenderPositionCenter -> origin - (rectangle ^. rectangleDimensions ^. dividing 2)
           RenderPositionTopLeft -> origin
-        rot = rs ^. rsRotation ^. degrees
-        srcRect = Just (rectangle ^. from wrenchRect)
-        destRect = Just (rectangleFromPoints pos (pos + (rectangle ^. rectangleDimensions)) ^. from wrenchRect)
-    renderDrawSprite platform identifier srcRect destRect rot
+        rot = rs ^. rsRotation
+        srcRect = (rectangle)
+        destRect = (rectangleFromPoints pos (pos + (rectangle ^. rectangleDimensions)))
+    renderDrawSprite (rs ^. rsPlatform) identifier srcRect destRect rot
 
 wrenchRender :: Platform p => p -> Maybe BackgroundColor -> Picture -> IO ()
 wrenchRender platform backgroundColor outerPicture = do
-  maybe (return ()) (\backgroundColor' -> renderSetDrawColor backgroudColor' >> renderClear p) backgroundColor
-  textures <- renderPicture (RenderState eye3 platform (fromMaybe colorsWhite backgroundColor) 0) outerPicture
-  renderFinish p
+  maybe (return ()) (\backgroundColor' -> renderSetDrawColor platform backgroundColor' >> renderClear platform) backgroundColor
+  renderPicture (RenderState eye3 platform (fromMaybe colorsWhite backgroundColor) 0) outerPicture
+  renderFinish platform
 
-data MainLoopContext p world = MainLoopContext { _mlImages          :: SurfaceMap
-                                               , _mlFont            :: TTFFont
-                                               , _mlPlatform        :: p
-                                               , _mlAnims           :: AnimMap
+data MainLoopContext p world = MainLoopContext { _mlPlatform        :: p
                                                , _mlBackgroundColor :: Maybe BackgroundColor
                                                , _mlStepsPerSecond  :: StepsPerSecond
                                                , _mlWorldToPicture  :: ViewportSize -> world -> Picture
@@ -130,31 +114,28 @@ splitDelta :: TimeDelta -> TimeDelta -> (Int,TimeDelta)
 splitDelta maxDelta n = let iterations = floor $ toSeconds n / toSeconds maxDelta
                         in (iterations,n - fromIntegral iterations * maxDelta)
 
-sizeToPoint :: SDLT.Size -> Point
-sizeToPoint (SDLT.Size w h) = V2 (fromIntegral w) (fromIntegral h)
-
 mainLoop :: Platform p => MainLoopContext p world -> PreviousTime -> SinceLastSimulation -> world -> IO ()
 mainLoop context prevTime prevDelta world = do
   let platform = context ^. mlPlatform
-  mappedEvents <- pollEvents p
+  mappedEvents <- pollEvents platform
   let worldAfterEvents = foldr (context ^. mlEventHandler) world mappedEvents
   newTime <- getTicks
   let timeDelta = newTime `tickDelta` prevTime
       maxDelta = fromSeconds . recip . fromIntegral $ context ^. mlStepsPerSecond
       (simulationSteps,newDelta) = splitDelta maxDelta (timeDelta + prevDelta)
   let newWorld = foldr (context ^. mlSimulationStep) worldAfterEvents (replicate simulationSteps maxDelta)
-  ws <- SDLV.getWindowSize (context ^. mlWindow)
+  ws <- viewportSize platform
   wrenchRender
     platform
     (context ^. mlBackgroundColor)
-    ((context ^. mlWorldToPicture) (sizeToPoint ws) world)
+    ((context ^. mlWorldToPicture) ws world)
   unless (any isQuitEvent mappedEvents) $ mainLoop context newTime newDelta newWorld
 
-$(makeLenses ''SDLPlatform)
+withPlatform :: WindowTitle -> FilePath -> (SDLPlatform -> IO ()) -> IO ()
+withPlatform = withSDLPlatform
 
 wrenchPlay :: Platform p =>
-              WindowTitle ->
-              MediaFilePath ->
+              p ->
               Maybe BackgroundColor ->
               world ->
               StepsPerSecond ->
@@ -162,7 +143,6 @@ wrenchPlay :: Platform p =>
               (Event -> world -> world) ->
               (TimeDelta -> world -> world) ->
               IO ()
-wrenchPlay windowTitle mediaPath backgroundColor initialWorld stepsPerSecond worldToPicture eventHandler simulationStep =
-  withPlatform windowTitle backgroundColor mediaPath $ \platform -> do
-    time <- getTicks
-    mainLoop (MainLoopContext images stdfont platform anims renderer window backgroundColor stepsPerSecond worldToPicture eventHandler simulationStep) time 0 initialWorld
+wrenchPlay platform backgroundColor initialWorld stepsPerSecond worldToPicture eventHandler simulationStep = do
+  time <- getTicks
+  mainLoop (MainLoopContext platform backgroundColor stepsPerSecond worldToPicture eventHandler simulationStep) time 0 initialWorld

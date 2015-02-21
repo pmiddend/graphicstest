@@ -11,10 +11,11 @@ type WindowTitle = String
 type BackgroundColor = Color
 
 class Platform p where
-  withPlatform :: WindowTitle -> Maybe BackgroundColor -> (p -> IO ()) -> IO ()
   pollEvents :: p -> IO [Event]
-  renderClear :: p -> BackgroundColor -> IO ()
+  renderClear :: p -> IO ()
   renderFinish :: p -> IO ()
   renderText :: p -> String -> Color -> Point -> IO ()
   renderSetDrawColor :: p -> Color -> IO ()
-  renderDrawSprite :: p -> SpriteIdentifier -> Rectangle -> Rectangle -> Radians -> Point -> IO ()
+  spriteDimensions :: p -> SpriteIdentifier -> IO Rectangle
+  viewportSize :: p -> IO Point
+  renderDrawSprite :: p -> SpriteIdentifier -> Rectangle -> Rectangle -> Radians -> IO ()

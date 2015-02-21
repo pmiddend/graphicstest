@@ -3,7 +3,18 @@
 {-# LANGUAGE TemplateHaskell            #-}
 module Wrench.SDLPlatform where
 
-import Wrench.Platform
+import           Control.Applicative
+import           Control.Exception         (bracket, bracket_)
+import           Control.Lens              ((^.),_1)
+import           Control.Lens.Getter       (Getter, to)
+import           Control.Lens.Iso          (Iso', from, iso)
+import Control.Monad.IO.Class(liftIO)
+import qualified Data.Text as T
+import           Control.Lens.TH           (makeLenses)
+import           Control.Monad.Loops       (unfoldM)
+import           Data.Maybe                (mapMaybe)
+import           Data.Monoid
+import Data.Map.Strict(lookup)
 import qualified Graphics.UI.SDL.Color     as SDLC
 import qualified Graphics.UI.SDL.Events    as SDLE
 import           Graphics.UI.SDL.Image     as SDLImage
@@ -12,33 +23,40 @@ import qualified Graphics.UI.SDL.Keysym    as SDLKeysym
 import qualified Graphics.UI.SDL.Rect      as SDLRect
 import qualified Graphics.UI.SDL.Render    as SDLR
 import qualified Graphics.UI.SDL.TTF       as SDLTtf
-import Wrench.Color
-import Wrench.Event
-import qualified Wrench.Keycode            as Wrenchkeycode
-import           Control.Exception         (bracket, bracket_)
-import Data.Monoid
 import           Graphics.UI.SDL.TTF.Types (TTFFont)
 import qualified Graphics.UI.SDL.Types     as SDLT
 import qualified Graphics.UI.SDL.Video     as SDLV
-import Wrench.ImageData
-import Wrench.Rectangle
-import           Control.Lens              ((&), (^.))
-import           Control.Lens.Getter       (Getter, to)
-import           Control.Lens.Iso          (Iso', from, iso)
-import           Control.Lens.Setter       ((%~), (+~), (.~))
-import           Control.Lens.TH           (makeLenses)
 import           Linear.V2                 (V2 (..), _x, _y)
+import           Wrench.Color
+import           Wrench.Event
+import           Wrench.ImageData
+import           Wrench.Angular
+import           Wrench.Point
+import qualified Wrench.Keycode            as Wrenchkeycode
+import           Wrench.KeyMovement
+import           Wrench.Keysym
+import           Wrench.Platform
+import           Wrench.Rectangle
+import Prelude hiding (lookup)
 
 floored :: (RealFrac a,Integral b) => Getter a b
 floored = to floor
 
 data SDLPlatform = SDLPlatform {
-    _sdlpRenderer        :: SDLT.Renderer
-  , _sdlpSurfaceMap      :: (SurfaceMap SDLT.Texture,AnimMap)
+    _sdlpRenderer   :: SDLT.Renderer
+  , _sdlpWindow   :: SDLT.Window
+  , _sdlpSurfaceMap :: (SurfaceMap SDLT.Texture,AnimMap)
+  , _sdlpFont       :: TTFFont
   }
 
+$(makeLenses ''SDLPlatform)
+
 toSdlRect :: Rectangle -> SDLRect.Rect
-toSdlRect r = SDLRect.Rect (r ^. rectLeftTop ^. _x ^. floored) (r ^. rectLeftTop ^. _y ^. floored) (r ^. rectangleDimensions ^. _x ^. floored) (r ^. rectangleDimensions ^. _y ^. floored)
+toSdlRect r = SDLRect.Rect
+              (r ^. rectLeftTop ^. _x ^. floored)
+              (r ^. rectLeftTop ^. _y ^. floored)
+              (r ^. rectangleDimensions ^. _x ^. floored)
+              (r ^. rectangleDimensions ^. _y ^. floored)
 
 fromSdlRect :: SDLRect.Rect -> Rectangle
 fromSdlRect (SDLRect.Rect x y w h) = rectangleFromPoints (V2 (fromIntegral x) (fromIntegral y)) (V2 (fromIntegral (x + w)) (fromIntegral (y + h)))
@@ -69,14 +87,15 @@ fromSdlEvent = to fromSdlEvent'
         fromSdlKeycode SDLKeycode.Down = Wrenchkeycode.Down
         fromSdlKeycode SDLKeycode.Left = Wrenchkeycode.Left
         fromSdlKeycode SDLKeycode.Right = Wrenchkeycode.Right
+        fromSdlKeycode _ = error "Unknown keycode"
 
 setRenderDrawColor :: SDLT.Renderer -> Color -> IO ()
 setRenderDrawColor renderer c = do
   _ <- SDLR.setRenderDrawColor renderer (c ^. colorRed) (c ^. colorGreen) (c ^. colorBlue) (c ^. colorAlpha)
   return ()
 
-renderClear :: SDLT.Renderer -> IO ()
-renderClear renderer = do
+renderClear' :: SDLT.Renderer -> IO ()
+renderClear' renderer = do
   _ <- SDLR.renderClear renderer
   return ()
 
@@ -98,35 +117,52 @@ withRenderer window callback =
       releaseResource = SDLR.destroyRenderer
   in bracket acquireResource releaseResource callback
 
-instance Platform SDLPlatform where
-  withPlatform windowTitle mediaPath callback = withFontInit $
+sizeToPoint :: SDLT.Size -> Point
+sizeToPoint (SDLT.Size w h) = V2 (fromIntegral w) (fromIntegral h)
+
+withSDLPlatform :: WindowTitle -> FilePath -> (SDLPlatform -> IO ()) -> IO ()
+withSDLPlatform windowTitle mediaPath cb =
+  withFontInit $
     withImgInit $
       withWindow windowTitle $ \window -> do
         withRenderer window $ \renderer -> do
-          stdfont <- SDLTtf.openFont (mediaPath <> "/stdfont.ttf") 15
-          surfaceData <- readMediaFiles (SDLT.loadTexture renderer) mediaPath
-          callback (SDLPlatform renderer surfaceData)
-  pollEvents p = mapMaybe (^. fromSdlEvent) <$> unfoldM SDLE.pollEvent
+          stdfont <- liftIO $ SDLTtf.openFont (mediaPath <> "/stdfont.ttf") 15
+          surfaceData <- readMediaFiles (SDLImage.loadTexture renderer) mediaPath
+          cb (SDLPlatform renderer window surfaceData stdfont) 
+
+instance Platform SDLPlatform where
+  pollEvents _ = mapMaybe (^. fromSdlEvent) <$> unfoldM SDLE.pollEvent
+  spriteDimensions p identifier = 
+    case T.pack identifier `lookup` ( p ^. sdlpSurfaceMap ^. _1 )  of
+      Nothing -> error $ "Couldn't find image \"" <> identifier <> "\""
+      Just (_,rectangle) -> return rectangle
   renderClear p = renderClear' (p ^. sdlpRenderer)
   renderFinish p = renderFinish' (p ^. sdlpRenderer)
   renderText p s c pos = do
-    texture <- createFontTexture renderer font text color
-    (width, height) <- liftIO $ SDLTtf.sizeText font (unpack text)
-    liftIO $ SDLR.renderCopy renderer texture Nothing (Just $ SDLRect.Rect (position ^. _x ^. floored) (position ^. _y ^. floored) width height)
+    texture <- createFontTexture (p ^. sdlpRenderer) (p ^. sdlpFont) (T.pack s) c
+    (width, height) <- SDLTtf.sizeText ( p ^. sdlpFont ) s
+    SDLR.renderCopy (p ^. sdlpRenderer) texture Nothing (Just $ SDLRect.Rect (pos ^. _x ^. floored) (pos ^. _y ^. floored) width height)
+    destroyTexture texture
+  viewportSize p = sizeToPoint <$> SDLV.getWindowSize (p ^. sdlpWindow)
   renderSetDrawColor p c = setRenderDrawColor (p ^. sdlpRenderer) c
-  renderDrawSprite p identifier srcRect dstRect rads rot = do
-    let surfaces = p ^. sdlpSurfaceMap
-        renderer = p ^. sdlpRenderer
-    case pack identifier `lookup` surfaces of
+  renderDrawSprite p identifier srcRect destRect rads = do
+    case T.pack identifier `lookup` ( p ^. sdlpSurfaceMap ^. _1 )  of
       Nothing -> error $ "Couldn't find image \"" <> identifier <> "\""
-      Just (texture,rectangle) -> do
+      Just (texture,_) -> do
         let rot = rads ^. degrees
             rotCenter = Nothing
             flipFlags = []
-        liftIO $ SDLR.renderCopyEx renderer texture (Just $ srcRect ^. from wrenchRect) (Just $ destRect ^. from wrenchRect) (rot ^. getDegrees) (rot ^. getDegrees) rotCenter flipFlags
+        SDLR.renderCopyEx
+          (p ^. sdlpRenderer)
+          texture
+          (Just $ srcRect ^. from wrenchRect)
+          (Just $ destRect ^. from wrenchRect)
+          (rot ^. getDegrees)
+          rotCenter
+          flipFlags
 
-destroyTexture :: MonadIO m => SDLT.Texture -> m ()
-destroyTexture t = liftIO $ SDLR.destroyTexture t
+destroyTexture :: SDLT.Texture -> IO ()
+destroyTexture t = SDLR.destroyTexture t
 
 withFontInit :: IO a -> IO a
 withFontInit = bracket_ SDLTtf.init SDLTtf.quit
@@ -134,7 +170,7 @@ withFontInit = bracket_ SDLTtf.init SDLTtf.quit
 withImgInit :: IO a -> IO a
 withImgInit = bracket_ (SDLImage.init [SDLImage.initPng]) SDLImage.quit
 
-createFontTexture :: MonadIO m => SDLT.Renderer -> TTFFont -> Text -> Color -> m SDLT.Texture
+createFontTexture :: SDLT.Renderer -> TTFFont -> T.Text -> Color -> IO SDLT.Texture
 createFontTexture renderer font text color = do
-  surface <- liftIO $ SDLTtf.renderUTF8Blended font (unpack text) (color ^. from wrenchColor)
-  liftIO $ SDLR.createTextureFromSurface renderer surface
+  surface <- SDLTtf.renderUTF8Blended font (T.unpack text) (color ^. from wrenchColor)
+  SDLR.createTextureFromSurface renderer surface

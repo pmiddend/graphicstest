@@ -14,10 +14,11 @@ module Wrench.ImageData(
   SurfaceData
   ) where
 
-import           Control.Applicative    ((*>), (<$>), (<*), (<*>))
+import           Control.Applicative    ((*>), (<$>), (<*), (<*>),Applicative)
 import           Control.Category       ((>>>))
 import           Control.Monad          ((>>=))
 import           Data.Eq                ((==))
+import Control.Monad.IO.Class(MonadIO,liftIO)
 import           Data.Int               (Int)
 import           Data.List              (filter, foldr, map)
 import           Data.Map.Strict        (Map, empty, fromList, union)
@@ -26,9 +27,8 @@ import           Data.Text              (Text, pack)
 import           Data.Traversable       (traverse)
 import           Data.Tuple             (fst, snd)
 import           Linear.V2              (V2 (..))
-import           Prelude                (Char)
+import           Prelude                (Char,($),Functor)
 import           System.FilePath
-import           System.IO              (IO)
 import           Text.Parsec            (many1)
 import           Text.Parsec.Char       (char, noneOf)
 import           Text.Parsec.Combinator (eof, sepEndBy1)
@@ -59,35 +59,35 @@ type AnimId = Text
 
 type AnimMap = Map AnimId Animation
 
-type ImageLoadFunction a = FilePath -> IO a
+type ImageLoadFunction m a = FilePath -> m a
 
 -- Holt alle "Descriptorfiles" (also die mit .txt enden) aus dem Directory
-getDescFilesInDir :: FilePath -> IO [ImageDescFile]
-getDescFilesInDir dir = filter (takeExtension >>> (== ".txt")) <$> getFilesInDir dir
+getDescFilesInDir :: MonadIO m => FilePath -> m [ImageDescFile]
+getDescFilesInDir dir = liftIO $ filter (takeExtension >>> (== ".txt")) <$> getFilesInDir dir
 
-readMediaFiles :: forall a.ImageLoadFunction a -> FilePath -> IO (SurfaceMap a,AnimMap)
+readMediaFiles :: forall a m.(Applicative m, MonadIO m) => ImageLoadFunction m a -> FilePath -> m (SurfaceMap a,AnimMap)
 readMediaFiles loadImage fp = (,) <$> (foldr union empty <$> smaps) <*> (foldr union empty <$> amaps)
-  where readSingle :: ImageDescFile -> IO (SurfaceMap a,AnimMap)
+  where readSingle :: ImageDescFile -> m (SurfaceMap a,AnimMap)
         readSingle f = imageDescToSurface loadImage f >>= imageDescToMaps f
-        maps :: IO [(SurfaceMap a,AnimMap)]
+        maps :: m [(SurfaceMap a,AnimMap)]
         maps = getDescFilesInDir fp >>= traverse readSingle
-        smaps :: IO [SurfaceMap a]
+        smaps :: m [SurfaceMap a]
         smaps = map fst <$> maps
-        amaps :: IO [AnimMap]
+        amaps :: m [AnimMap]
         amaps = map snd <$> maps
 
-imageDescToSurface :: ImageLoadFunction a -> ImageDescFile -> IO a
+imageDescToSurface :: ImageLoadFunction m a -> ImageDescFile -> m a
 imageDescToSurface loadImage x = loadImage (replaceExtension x ".png")
 
-imageDescToMaps :: ImageDescFile -> a -> IO (SurfaceMap a,AnimMap)
+imageDescToMaps :: forall a m.(Functor m,Applicative m,MonadIO m) => ImageDescFile -> a -> m (SurfaceMap a,AnimMap)
 imageDescToMaps f s = (,) <$> (toSurfaceMap s <$> rSurfaceData) <*> rAnimData
-  where rImageData :: IO [DataLine]
+  where rImageData :: m [DataLine]
         rImageData = readImageData f
-        rSurfaceData :: IO ImageMap
+        rSurfaceData :: m ImageMap
         rSurfaceData = fromList <$> (mapMaybe (\x -> case x of
                                   DataLineImage i -> Just i
                                   _ -> Nothing) <$> rImageData)
-        rAnimData :: IO AnimMap
+        rAnimData :: m AnimMap
         rAnimData = fromList <$> (mapMaybe (\x -> case x of
                                   DataLineAnim i -> Just i
                                   _ -> Nothing) <$> rImageData)
@@ -95,8 +95,8 @@ imageDescToMaps f s = (,) <$> (toSurfaceMap s <$> rSurfaceData) <*> rAnimData
 toSurfaceMap :: a -> ImageMap -> SurfaceMap a
 toSurfaceMap s = ((s,) <$>)
 
-readImageData :: FilePath -> IO [DataLine]
-readImageData = safeParseFromFile imageDataC
+readImageData :: MonadIO m => FilePath -> m [DataLine]
+readImageData fp = liftIO $ safeParseFromFile imageDataC fp
 
 imageDataC :: Stream s m Char => ParsecT s u m [DataLine]
 imageDataC = sepEndBy1 imageDataLineC (char '\n') <* eof
