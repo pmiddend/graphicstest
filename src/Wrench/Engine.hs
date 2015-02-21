@@ -70,8 +70,7 @@ renderPicture rs p = case p of
   Blank -> return ()
   Line _ _ -> undefined
   Text s -> renderText (rs ^. rsPlatform) (s) (rs ^. rsColor) (((rs ^. rsTransformation) !* V3 0 0 1) ^. toV2)
-  InColor color picture -> do renderSetDrawColor (rs ^. rsPlatform) color
-                              renderPicture (rs & rsColor .~ color) picture
+  InColor color picture -> renderPicture (rs & rsColor .~ color) picture
   Pictures ps -> mapM_ (renderPicture rs) ps
   Translate point picture -> renderPicture (rs & rsTransformation %~ (!*! mkTranslation point)) picture
   Rotate r picture -> renderPicture (rs & ((rsRotation +~ r) . (rsTransformation %~ (!*! mkRotation (r ^. getRadians))))) picture
@@ -84,13 +83,12 @@ renderPicture rs p = case p of
           RenderPositionCenter -> origin - (rectangle ^. rectangleDimensions ^. dividing 2)
           RenderPositionTopLeft -> origin
         rot = rs ^. rsRotation
-        srcRect = (rectangle)
         destRect = (rectangleFromPoints pos (pos + (rectangle ^. rectangleDimensions)))
-    renderDrawSprite (rs ^. rsPlatform) identifier srcRect destRect rot
+    renderDrawSprite (rs ^. rsPlatform) identifier destRect rot
 
 wrenchRender :: Platform p => p -> Maybe BackgroundColor -> Picture -> IO ()
 wrenchRender platform backgroundColor outerPicture = do
-  maybe (return ()) (\backgroundColor' -> renderSetDrawColor platform backgroundColor' >> renderClear platform) backgroundColor
+  maybe (return ()) (renderClear platform) backgroundColor
   renderPicture (RenderState eye3 platform (fromMaybe colorsWhite backgroundColor) 0) outerPicture
   renderFinish platform
 

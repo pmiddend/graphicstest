@@ -14,10 +14,10 @@ type BackgroundColor = Color
 
 class Platform p where
   pollEvents :: p -> IO [Event]
-  renderClear :: p -> IO ()
+  renderBegin :: p -> IO ()
+  renderClear :: p -> Color -> IO ()
   renderFinish :: p -> IO ()
   renderText :: p -> T.Text -> Color -> Point -> IO ()
-  renderSetDrawColor :: p -> Color -> IO ()
   spriteDimensions :: p -> SpriteIdentifier -> IO Rectangle
   viewportSize :: p -> IO Point
-  renderDrawSprite :: p -> SpriteIdentifier -> Rectangle -> Rectangle -> Radians -> IO ()
+  renderDrawSprite :: p -> SpriteIdentifier -> Rectangle -> Radians -> IO ()

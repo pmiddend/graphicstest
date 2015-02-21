@@ -132,7 +132,8 @@ instance Platform SDLPlatform where
     case identifier `lookup` ( p ^. sdlpSurfaceMap ^. _1 )  of
       Nothing -> error . T.unpack $ "Couldn't find image \"" <> identifier <> "\""
       Just (_,rectangle) -> return rectangle
-  renderClear p = renderClear' (p ^. sdlpRenderer)
+  renderBegin _ = return ()
+  renderClear p c = setRenderDrawColor (p ^. sdlpRenderer) c >> renderClear' (p ^. sdlpRenderer)
   renderFinish p = renderFinish' (p ^. sdlpRenderer)
   renderText p s c pos = do
     texture <- createFontTexture (p ^. sdlpRenderer) (p ^. sdlpFont) s c
@@ -140,8 +141,8 @@ instance Platform SDLPlatform where
     SDLR.renderCopy (p ^. sdlpRenderer) texture Nothing (Just $ SDLRect.Rect (pos ^. _x ^. floored) (pos ^. _y ^. floored) width height)
     destroyTexture texture
   viewportSize p = sizeToPoint <$> SDLV.getWindowSize (p ^. sdlpWindow)
-  renderSetDrawColor p c = setRenderDrawColor (p ^. sdlpRenderer) c
-  renderDrawSprite p identifier srcRect destRect rads = do
+  renderDrawSprite p identifier destRect rads = do
+    srcRect <- spriteDimensions p identifier
     case identifier `lookup` ( p ^. sdlpSurfaceMap ^. _1 )  of
       Nothing -> error . T.unpack $ "Couldn't find image \"" <> identifier <> "\""
       Just (texture,_) -> do
