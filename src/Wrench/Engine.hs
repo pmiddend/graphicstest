@@ -88,7 +88,7 @@ renderPicture rs p = case p of
 
 wrenchRender :: Platform p => p -> Maybe BackgroundColor -> Picture -> IO ()
 wrenchRender platform backgroundColor outerPicture = do
-  renderBegin
+  renderBegin platform
   maybe (return ()) (renderClear platform) backgroundColor
   renderPicture (RenderState eye3 platform (fromMaybe colorsWhite backgroundColor) 0) outerPicture
   renderFinish platform
