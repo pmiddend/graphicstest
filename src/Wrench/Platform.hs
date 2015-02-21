@@ -7,6 +7,7 @@ import Wrench.SpriteIdentifier
 import Wrench.Rectangle
 import Wrench.Angular
 import qualified Data.Text as T
+import ClassyPrelude 
 
 type WindowTitle = T.Text
 type BackgroundColor = Color

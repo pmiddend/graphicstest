@@ -7,6 +7,7 @@ import Wrench.RenderPositionMode
 import Wrench.Color
 import Wrench.Angular
 import qualified Data.Text as T
+import ClassyPrelude
 
 data Picture = Line Point Point
              | Text T.Text

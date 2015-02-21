@@ -1,21 +1,17 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE RankNTypes                 #-}
 {-# LANGUAGE TemplateHaskell            #-}
-{-# LANGUAGE OverloadedStrings            #-}
 module Wrench.SDLPlatform where
 
-import           Control.Applicative
-import           Control.Exception         (bracket, bracket_)
-import           Control.Lens              ((^.),_1)
+import           ClassyPrelude             hiding (lookup)
+import           Control.Lens              ((^.), _1)
 import           Control.Lens.Getter       (Getter, to)
 import           Control.Lens.Iso          (Iso', from, iso)
-import Control.Monad.IO.Class(liftIO)
-import qualified Data.Text as T
 import           Control.Lens.TH           (makeLenses)
 import           Control.Monad.Loops       (unfoldM)
-import           Data.Maybe                (mapMaybe)
-import           Data.Monoid
-import Data.Map.Strict(lookup)
+import           Data.Map.Strict           (lookup)
+import qualified Data.Text                 as T
 import qualified Graphics.UI.SDL.Color     as SDLC
 import qualified Graphics.UI.SDL.Events    as SDLE
 import           Graphics.UI.SDL.Image     as SDLImage
@@ -28,24 +24,23 @@ import           Graphics.UI.SDL.TTF.Types (TTFFont)
 import qualified Graphics.UI.SDL.Types     as SDLT
 import qualified Graphics.UI.SDL.Video     as SDLV
 import           Linear.V2                 (V2 (..), _x, _y)
+import           Wrench.Angular
 import           Wrench.Color
 import           Wrench.Event
 import           Wrench.ImageData
-import           Wrench.Angular
-import           Wrench.Point
 import qualified Wrench.Keycode            as Wrenchkeycode
 import           Wrench.KeyMovement
 import           Wrench.Keysym
 import           Wrench.Platform
+import           Wrench.Point
 import           Wrench.Rectangle
-import Prelude hiding (lookup)
 
 floored :: (RealFrac a,Integral b) => Getter a b
 floored = to floor
 
 data SDLPlatform = SDLPlatform {
     _sdlpRenderer   :: SDLT.Renderer
-  , _sdlpWindow   :: SDLT.Window
+  , _sdlpWindow     :: SDLT.Window
   , _sdlpSurfaceMap :: (SurfaceMap SDLT.Texture,AnimMap)
   , _sdlpFont       :: TTFFont
   }
@@ -127,13 +122,13 @@ withSDLPlatform windowTitle mediaPath cb =
     withImgInit $
       withWindow windowTitle $ \window -> do
         withRenderer window $ \renderer -> do
-          stdfont <- liftIO $ SDLTtf.openFont (mediaPath <> "/stdfont.ttf") 15
-          surfaceData <- readMediaFiles (SDLImage.loadTexture renderer) mediaPath
-          cb (SDLPlatform renderer window surfaceData stdfont) 
+          stdfont <- liftIO $ SDLTtf.openFont (fpToString (mediaPath </> "stdfont.ttf") ) 15
+          surfaceData <- readMediaFiles (\fp -> SDLImage.loadTexture renderer (fpToString fp)) mediaPath
+          cb (SDLPlatform renderer window surfaceData stdfont)
 
 instance Platform SDLPlatform where
   pollEvents _ = mapMaybe (^. fromSdlEvent) <$> unfoldM SDLE.pollEvent
-  spriteDimensions p identifier = 
+  spriteDimensions p identifier =
     case identifier `lookup` ( p ^. sdlpSurfaceMap ^. _1 )  of
       Nothing -> error . T.unpack $ "Couldn't find image \"" <> identifier <> "\""
       Just (_,rectangle) -> return rectangle

@@ -14,13 +14,10 @@ import           Control.Lens              ((&), (^.))
 import           Control.Lens.Getter       (Getter, to)
 import           Control.Lens.Setter       ((%~), (+~), (.~))
 import           Control.Lens.TH           (makeLenses)
-import           Control.Monad             (unless)
-import           Data.Maybe                (fromMaybe)
 import           Linear.Matrix             (M33, eye3, (!*), (!*!))
 import           Linear.V2                 (V2 (..), _x, _y)
 import           Linear.V3                 (V3 (..))
 import           Numeric.Lens              (dividing)
-import           Prelude                   hiding (lookup)
 import           Wrench.Angular
 import           Wrench.Color
 import           Wrench.Event
@@ -33,6 +30,7 @@ import           Wrench.Rectangle          (rectangleDimensions,
 import           Wrench.RenderPositionMode
 import           Wrench.SDLPlatform
 import           Wrench.Time
+import ClassyPrelude
 
 type ViewportSize = Point
 
@@ -123,7 +121,7 @@ mainLoop context prevTime prevDelta world = do
   let timeDelta = newTime `tickDelta` prevTime
       maxDelta = fromSeconds . recip . fromIntegral $ context ^. mlStepsPerSecond
       (simulationSteps,newDelta) = splitDelta maxDelta (timeDelta + prevDelta)
-  let newWorld = foldr (context ^. mlSimulationStep) worldAfterEvents (replicate simulationSteps maxDelta)
+  let newWorld = foldr (context ^. mlSimulationStep) worldAfterEvents (replicate simulationSteps maxDelta :: [TimeDelta])
   ws <- viewportSize platform
   wrenchRender
     platform

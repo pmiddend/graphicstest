@@ -11,7 +11,7 @@ module Wrench.Color(
   ) where
 
 import           Control.Lens.TH           (makeLenses)
-import Data.Word(Word8)
+import ClassyPrelude
 
 data Color = Color { _colorRed   :: Word8
                    , _colorGreen :: Word8

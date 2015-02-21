@@ -5,6 +5,7 @@ module Wrench.Angular where
 import           Control.Lens.TH           (makeLenses)
 import Wrench.FloatType
 import           Control.Lens.Iso          (Iso', iso)
+import ClassyPrelude
 
 newtype Radians = Radians { _getRadians :: FloatType } deriving(Show,Eq,Num)
 $(makeLenses ''Radians)

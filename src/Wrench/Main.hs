@@ -2,13 +2,13 @@
 module Main where
 
 import           Control.Lens   (from, (^.))
-import           Debug.Trace    (traceShowId)
 import           Linear.V2
 import           Wrench.Angular
 import           Wrench.Color
 import           Wrench.Engine  (Picture (..), RenderPositionMode (..),
                                  ViewportSize, wrenchPlay,withPlatform)
 import           Wrench.Time
+import ClassyPrelude
 
 toPicture :: ViewportSize -> Double -> Picture
 toPicture _ td = Translate (V2 100 100) $ Rotate (Degrees td ^. from degrees) $ Sprite "car" RenderPositionCenter

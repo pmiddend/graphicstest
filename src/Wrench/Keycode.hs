@@ -1,5 +1,7 @@
 module Wrench.Keycode where
 
+import ClassyPrelude
+
 data Keycode
   = A
   | B

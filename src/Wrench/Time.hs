@@ -9,8 +9,8 @@ module Wrench.Time(
   , toSeconds
 ) where
 
-import           Data.Word    (Word64)
 import           System.Clock (Clock (Monotonic), TimeSpec (TimeSpec), getTime)
+import ClassyPrelude
 
 newtype TimeDelta = TimeDelta { _timeDelta :: Double } deriving(Show,Num,Eq,Ord)
 newtype TimeTicks = TimeTicks { _timeTicks :: Word64 } deriving(Show,Num,Eq,Ord)

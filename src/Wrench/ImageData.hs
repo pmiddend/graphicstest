@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TupleSections         #-}
 module Wrench.ImageData(
   ImageId,
@@ -14,25 +14,15 @@ module Wrench.ImageData(
   SurfaceData
   ) where
 
-import           Control.Applicative    ((*>), (<$>), (<*), (<*>),Applicative)
-import           Control.Category       ((>>>))
-import           Control.Monad          ((>>=))
-import           Data.Eq                ((==))
-import Control.Monad.IO.Class(MonadIO,liftIO)
-import           Data.Int               (Int)
-import           Data.List              (filter, foldr, map)
-import           Data.Map.Strict        (Map, empty, fromList, union)
-import           Data.Maybe             (Maybe (Just, Nothing), mapMaybe)
-import           Data.Text              (Text, pack)
-import           Data.Traversable       (traverse)
-import           Data.Tuple             (fst, snd)
-import           Linear.V2              (V2 (..))
-import           Prelude                (Char,($),Functor)
-import           System.FilePath
-import           Text.Parsec            (many1)
-import           Text.Parsec.Char       (char, noneOf)
-import           Text.Parsec.Combinator (eof, sepEndBy1)
-import           Text.Parsec.Prim       (ParsecT, Stream, (<|>))
+import           Control.Category          ((>>>))
+import qualified Data.Map.Strict           as M
+import           Linear.V2                 (V2 (..))
+import           Text.Parsec               (many1)
+import           Text.Parsec.Char          (char, noneOf)
+import           Text.Parsec.Combinator    (eof, sepEndBy1)
+import           ClassyPrelude
+import           Filesystem.Path.CurrentOS
+import           Text.Parsec.Prim          (ParsecT, Stream)
 import           Wrench.Filesystem
 import           Wrench.Parsec
 import           Wrench.Point
@@ -63,10 +53,10 @@ type ImageLoadFunction m a = FilePath -> m a
 
 -- Holt alle "Descriptorfiles" (also die mit .txt enden) aus dem Directory
 getDescFilesInDir :: MonadIO m => FilePath -> m [ImageDescFile]
-getDescFilesInDir dir = liftIO $ filter (takeExtension >>> (== ".txt")) <$> getFilesInDir dir
+getDescFilesInDir dir = liftIO $ filter (extension >>> (== Just "txt")) <$> getFilesInDir dir
 
 readMediaFiles :: forall a m.(Applicative m, MonadIO m) => ImageLoadFunction m a -> FilePath -> m (SurfaceMap a,AnimMap)
-readMediaFiles loadImage fp = (,) <$> (foldr union empty <$> smaps) <*> (foldr union empty <$> amaps)
+readMediaFiles loadImage fp = (,) <$> (foldr M.union M.empty <$> smaps) <*> (foldr M.union M.empty <$> amaps)
   where readSingle :: ImageDescFile -> m (SurfaceMap a,AnimMap)
         readSingle f = imageDescToSurface loadImage f >>= imageDescToMaps f
         maps :: m [(SurfaceMap a,AnimMap)]
@@ -84,11 +74,11 @@ imageDescToMaps f s = (,) <$> (toSurfaceMap s <$> rSurfaceData) <*> rAnimData
   where rImageData :: m [DataLine]
         rImageData = readImageData f
         rSurfaceData :: m ImageMap
-        rSurfaceData = fromList <$> (mapMaybe (\x -> case x of
+        rSurfaceData = M.fromList <$> (mapMaybe (\x -> case x of
                                   DataLineImage i -> Just i
                                   _ -> Nothing) <$> rImageData)
         rAnimData :: m AnimMap
-        rAnimData = fromList <$> (mapMaybe (\x -> case x of
+        rAnimData = M.fromList <$> (mapMaybe (\x -> case x of
                                   DataLineAnim i -> Just i
                                   _ -> Nothing) <$> rImageData)
 
@@ -96,7 +86,7 @@ toSurfaceMap :: a -> ImageMap -> SurfaceMap a
 toSurfaceMap s = ((s,) <$>)
 
 readImageData :: MonadIO m => FilePath -> m [DataLine]
-readImageData fp = liftIO $ safeParseFromFile imageDataC fp
+readImageData fp = liftIO $ safeParseFromFile imageDataC (fpToString fp)
 
 imageDataC :: Stream s m Char => ParsecT s u m [DataLine]
 imageDataC = sepEndBy1 imageDataLineC (char '\n') <* eof

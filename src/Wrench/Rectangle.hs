@@ -10,6 +10,7 @@ module Wrench.Rectangle(
 import Wrench.Point
 import Control.Lens.TH
 import Control.Lens.Getter(to,Getter)
+import ClassyPrelude
 
 data Rectangle = Rectangle { _rectLeftTop     :: Point
                            , _rectRightBottom :: Point

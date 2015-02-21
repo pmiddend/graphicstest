@@ -33,9 +33,12 @@ executable maintest
                      , monad-loops
                      , clock
                      , transformers
+                     , classy-prelude
+                     , system-filepath
                      , mtl
   -- hs-source-dirs:
   default-language:    Haskell2010
+  extensions: NoImplicitPrelude
 
 library
 --  main-is:             Wrench/Main.hs
@@ -68,5 +71,8 @@ library
                      , transformers
                      , mtl
                      , lifted-base
+                     , classy-prelude
+                     , system-filepath
   -- hs-source-dirs:
   default-language:    Haskell2010
+  extensions: NoImplicitPrelude

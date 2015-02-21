@@ -2,6 +2,7 @@ module Wrench.Event where
 
 import Wrench.KeyMovement
 import Wrench.Keysym
+import ClassyPrelude
 
 data Event =
     Keyboard { keyMovement :: KeyMovement
