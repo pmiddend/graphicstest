@@ -1,6 +1,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE RankNTypes                 #-}
 {-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE CPP                        #-}
 module Wrench.Engine(
     Picture(..)
   , wrenchPlay
@@ -28,7 +29,11 @@ import           Wrench.Point              (Point)
 import           Wrench.Rectangle          (rectangleDimensions,
                                             rectangleFromPoints)
 import           Wrench.RenderPositionMode
+#if defined(USE_SGE)
+import           Wrench.SGEPlatform
+#else
 import           Wrench.SDLPlatform
+#endif
 import           Wrench.Time
 import ClassyPrelude
 
@@ -128,8 +133,13 @@ mainLoop context prevTime prevDelta world = do
     ((context ^. mlWorldToPicture) ws world)
   unless (any isQuitEvent mappedEvents) $ mainLoop context newTime newDelta newWorld
 
+#if defined(USE_SGE)
+withPlatform :: WindowTitle -> FilePath -> (SGEPlatform -> IO ()) -> IO ()
+withPlatform = withSGEPlatform
+#else
 withPlatform :: WindowTitle -> FilePath -> (SDLPlatform -> IO ()) -> IO ()
 withPlatform = withSDLPlatform
+#endif
 
 wrenchPlay :: Platform p =>
               p ->
