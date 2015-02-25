@@ -67,7 +67,7 @@ readMediaFiles loadImage fp = (,) <$> (foldr M.union M.empty <$> smaps) <*> (fol
         amaps = map snd <$> maps
 
 imageDescToSurface :: ImageLoadFunction m a -> ImageDescFile -> m a
-imageDescToSurface loadImage x = loadImage (replaceExtension x ".png")
+imageDescToSurface loadImage x = loadImage (replaceExtension x "png")
 
 imageDescToMaps :: forall a m.(Functor m,Applicative m,MonadIO m) => ImageDescFile -> a -> m (SurfaceMap a,AnimMap)
 imageDescToMaps f s = (,) <$> (toSurfaceMap s <$> rSurfaceData) <*> rAnimData
