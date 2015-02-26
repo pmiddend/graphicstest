@@ -243,15 +243,16 @@ makeInputResults p inputs = do
                  else
                     return [Quit]
 
-keyCallback :: InputsRef -> SGE.Input.KeyboardKey -> SGE.Input.KeyState -> IO ()
-keyCallback inputs key status = do
+appendInput :: InputsRef -> KeyboardInput -> IO ()
+appendInput inputs input = do
             old <- readIORef inputs
-            writeIORef inputs (KeyEvent (key, status) : old)
+            writeIORef inputs (input : old)
+
+keyCallback :: InputsRef -> SGE.Input.KeyboardKey -> SGE.Input.KeyState -> IO ()
+keyCallback inputs key status = appendInput inputs (KeyEvent (key, status))
 
 keyRepeatCallback :: InputsRef -> SGE.Input.KeyboardKey -> IO ()
-keyRepeatCallback inputs key = do
-                  old <- readIORef inputs
-                  writeIORef inputs ((KeyRepeatEvent key) : old)
+keyRepeatCallback inputs key = appendInput inputs (KeyRepeatEvent key)
 
 lookupSpriteError :: SGEPlatform -> SpriteIdentifier -> IO SpriteData
 lookupSpriteError p identifier =
