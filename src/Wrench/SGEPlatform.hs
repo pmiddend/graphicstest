@@ -14,7 +14,7 @@ import           GHC.Float ( double2Float )
 import           Linear.V2(_x, _y, V2(..))
 import qualified SGE.Font ( ObjectPtr, draw, withFont )
 import qualified SGE.Image ( RGBA, makeRGBA )
-import qualified SGE.Input ( KeyboardPtr, KeyboardKey(..), KeyState(..), withKeyCallback )
+import qualified SGE.Input ( KeyboardPtr, KeyboardKey(..), KeyState(..), withKeyCallback, withKeyRepeatCallback )
 import qualified SGE.Renderer ( ContextPtr, DevicePtr, PlanarTexturePtr, beginRenderingExn, clear, endRenderingAndDestroy, onscreenTarget, onscreenTargetDim, planarTextureFromPathExn )
 import qualified SGE.Sprite ( Object(..), draw )
 import qualified SGE.Systems ( InstancePtr, fontSystem, imageSystem, keyboard, renderer, windowSystem, with )
@@ -54,12 +54,16 @@ renderer p = SGE.Systems.renderer (p ^. sgepSystem)
 window :: SGEPlatform -> SGE.Window.SystemPtr
 window p = SGE.Systems.windowSystem (p ^. sgepSystem)
 
+failMaybe :: Maybe a -> String -> IO a
+failMaybe mb message =
+          case mb of
+               Just x -> return x
+               Nothing -> error message
+
 contextError :: SGEPlatform -> IO SGE.Renderer.ContextPtr
 contextError p = do
              context <- readIORef (p ^. sgepContext)
-             case context of
-                  Just c -> return c
-                  Nothing -> error "No active render context"
+             failMaybe context "No active render context"
 
 toSGEColor :: Color -> SGE.Image.RGBA
 toSGEColor c = SGE.Image.makeRGBA (c ^. colorRed) (c ^. colorBlue) (c ^. colorGreen) (c ^. colorAlpha)
@@ -206,18 +210,29 @@ makeKeySym s = case s of
             SGE.Input.KeyboardkeyYen -> Nothing
             SGE.Input.KeyboardkeyUnknown -> Nothing
 
-makeKeyEvent :: (SGE.Input.KeyboardKey, SGE.Input.KeyState) -> Maybe Event
-makeKeyEvent (k, s) = do
-             keysym <- makeKeySym k
-             return $ Keyboard {
-                 keyMovement = makeKeyMovement s
-             ,   keyRepeat = False -- TODO
-             ,   keySym = keysym
-             }
+data KeyboardInput =
+     KeyEvent (SGE.Input.KeyboardKey, SGE.Input.KeyState)
+     | KeyRepeatEvent SGE.Input.KeyboardKey
 
-type KeyboardInput = (SGE.Input.KeyboardKey, SGE.Input.KeyState)
 type Inputs = [KeyboardInput]
 type InputsRef = IORef Inputs
+
+makeKeyEvent :: KeyboardInput -> Maybe Event
+makeKeyEvent event = case event of
+             KeyEvent (k, s) -> do
+                      keysym <- makeKeySym k
+                      return $ Keyboard {
+                               keyMovement = makeKeyMovement s
+                             , keyRepeat = False
+                             , keySym = keysym
+                             }
+             KeyRepeatEvent k -> do
+                            keysym <- makeKeySym k
+                            return $ Keyboard {
+                                     keyMovement = KeyDown
+                                   , keyRepeat = True
+                                   , keySym = keysym
+                                   }
 
 makeInputResults :: SGEPlatform -> InputsRef -> IO [Event]
 makeInputResults p inputs = do
@@ -231,18 +246,23 @@ makeInputResults p inputs = do
 keyCallback :: InputsRef -> SGE.Input.KeyboardKey -> SGE.Input.KeyState -> IO ()
 keyCallback inputs key status = do
             old <- readIORef inputs
-            writeIORef inputs ((key, status) : old)
+            writeIORef inputs (KeyEvent (key, status) : old)
+
+keyRepeatCallback :: InputsRef -> SGE.Input.KeyboardKey -> IO ()
+keyRepeatCallback inputs key = do
+                  old <- readIORef inputs
+                  writeIORef inputs ((KeyRepeatEvent key) : old)
 
 lookupSpriteError :: SGEPlatform -> SpriteIdentifier -> IO SpriteData
 lookupSpriteError p identifier =
-                  case identifier `lookup` ( p ^. sgepSurfaceMap ^. _1 )  of
-                       Nothing -> error ("Couldn't find image \"" ++ (T.unpack identifier) ++ "\"")
-                       Just x -> return x
+                 failMaybe (identifier `lookup` ( p ^. sgepSurfaceMap ^. _1 ))
+                           ("Couldn't find image \"" ++ (T.unpack identifier) ++ "\"")
 
 instance Platform SGEPlatform where
          pollEvents p = do
                     inputs <- newIORef []
-                    SGE.Input.withKeyCallback (keyboard p) (keyCallback inputs) (makeInputResults p inputs)
+                    SGE.Input.withKeyCallback (keyboard p) (keyCallback inputs)
+                                              (SGE.Input.withKeyRepeatCallback (keyboard p) (keyRepeatCallback inputs) (makeInputResults p inputs))
          renderBegin p = do
                      context <- SGE.Renderer.beginRenderingExn $ renderer p
                      writeIORef (p ^. sgepContext) (Just context)
