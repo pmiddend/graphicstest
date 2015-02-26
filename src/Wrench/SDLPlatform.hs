@@ -28,9 +28,8 @@ import           Wrench.Angular
 import           Wrench.Color
 import           Wrench.Event
 import           Wrench.ImageData
-import qualified Wrench.Keycode            as Wrenchkeycode
 import           Wrench.KeyMovement
-import           Wrench.Keysym
+import qualified Wrench.Keysym as Keysym
 import           Wrench.Platform
 import           Wrench.Point
 import           Wrench.Rectangle
@@ -78,11 +77,11 @@ fromSdlEvent = to fromSdlEvent'
         fromSdlEvent'' _ = Nothing
         fromSdlKeyMovement SDLE.KeyUp = KeyUp
         fromSdlKeyMovement SDLE.KeyDown = KeyDown
-        fromSdlSym (SDLKeysym.Keysym _ keycode modifiers) = Keysym (fromSdlKeycode keycode) modifiers
-        fromSdlKeycode SDLKeycode.Up = Wrenchkeycode.Up
-        fromSdlKeycode SDLKeycode.Down = Wrenchkeycode.Down
-        fromSdlKeycode SDLKeycode.Left = Wrenchkeycode.Left
-        fromSdlKeycode SDLKeycode.Right = Wrenchkeycode.Right
+        fromSdlSym (SDLKeysym.Keysym _ keycode _) = fromSdlKeycode keycode
+        fromSdlKeycode SDLKeycode.Up = Keysym.Up
+        fromSdlKeycode SDLKeycode.Down = Keysym.Down
+        fromSdlKeycode SDLKeycode.Left = Keysym.Left
+        fromSdlKeycode SDLKeycode.Right = Keysym.Right
         fromSdlKeycode _ = error "Unknown keycode"
 
 setRenderDrawColor :: SDLT.Renderer -> Color -> IO ()

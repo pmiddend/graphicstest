@@ -27,7 +27,7 @@ import Wrench.Color ( Color, colorAlpha, colorBlue, colorGreen, colorRed )
 import Wrench.Event ( Event(..) )
 import Wrench.ImageData ( AnimMap, SurfaceData, SurfaceMap, readMediaFiles )
 import Wrench.KeyMovement ( KeyMovement(..) )
-import qualified Wrench.Keycode as Keycode ( Keycode(..) )
+import qualified Wrench.Keysym as Keysym ( Keysym(..) )
 import Wrench.Keysym ( Keysym(..) )
 import Wrench.Platform ( Platform(..), WindowTitle )
 import Wrench.Point ( Point )
@@ -80,14 +80,11 @@ makeKeyMovement s = case s of
                 SGE.Input.KeystatePressed -> KeyDown
                 SGE.Input.KeystateReleased -> KeyUp
 
-makeKeyCode :: SGE.Input.KeyboardKey -> Keycode.Keycode
-makeKeyCode s = case s of
-            -- TODO
-            SGE.Input.KeyboardkeyEscape -> Keycode.Escape
-            _ -> error "Invalid key"
-
-makeKeySym :: SGE.Input.KeyboardKey -> Keysym
-makeKeySym s = Keysym (makeKeyCode s) 0 -- TODO
+makeKeySym :: SGE.Input.KeyboardKey -> Keysym.Keysym
+makeKeySym s = case s of
+                 -- TODO
+                 SGE.Input.KeyboardkeyEscape -> Keysym.Escape
+                 _ -> error "Invalid key"
 
 makeKeyEvent :: (SGE.Input.KeyboardKey, SGE.Input.KeyState) -> Event
 makeKeyEvent (k, s) = Keyboard {

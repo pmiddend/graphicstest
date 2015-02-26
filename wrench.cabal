@@ -61,7 +61,7 @@ library
                      , Wrench.Engine
                      , Wrench.FloatType
                      , Wrench.ImageData
-                     , Wrench.Keycode
+                     , Wrench.Keysym
                      , Wrench.Point
                      , Wrench.Rectangle
                      , Wrench.Time
