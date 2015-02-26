@@ -46,6 +46,7 @@ executable maintest
   -- hs-source-dirs:
   default-language:    Haskell2010
   default-extensions: NoImplicitPrelude
+  ghc-options: -Wall
 
 library
 --  main-is:             Wrench/Main.hs
@@ -88,3 +89,4 @@ library
   -- hs-source-dirs:
   default-language:    Haskell2010
   default-extensions: NoImplicitPrelude
+  ghc-options: -Wall
