@@ -120,18 +120,19 @@ mainLoop :: Platform p => MainLoopContext p world -> PreviousTime -> SinceLastSi
 mainLoop context prevTime prevDelta world = do
   let platform = context ^. mlPlatform
   mappedEvents <- pollEvents platform
-  let worldAfterEvents = foldr (context ^. mlEventHandler) world mappedEvents
-  newTime <- getTicks
-  let timeDelta = newTime `tickDelta` prevTime
-      maxDelta = fromSeconds . recip . fromIntegral $ context ^. mlStepsPerSecond
-      (simulationSteps,newDelta) = splitDelta maxDelta (timeDelta + prevDelta)
-  let newWorld = foldr (context ^. mlSimulationStep) worldAfterEvents (replicate simulationSteps maxDelta :: [TimeDelta])
-  ws <- viewportSize platform
-  wrenchRender
-    platform
-    (context ^. mlBackgroundColor)
-    ((context ^. mlWorldToPicture) ws world)
-  unless (any isQuitEvent mappedEvents) $ mainLoop context newTime newDelta newWorld
+  unless (any isQuitEvent mappedEvents) $ do
+    let worldAfterEvents = foldr (context ^. mlEventHandler) world mappedEvents
+    newTime <- getTicks
+    let timeDelta = newTime `tickDelta` prevTime
+        maxDelta = fromSeconds . recip . fromIntegral $ context ^. mlStepsPerSecond
+        (simulationSteps,newDelta) = splitDelta maxDelta (timeDelta + prevDelta)
+    let newWorld = foldr (context ^. mlSimulationStep) worldAfterEvents (replicate simulationSteps maxDelta :: [TimeDelta])
+    ws <- viewportSize platform
+    wrenchRender
+        platform
+        (context ^. mlBackgroundColor)
+        ((context ^. mlWorldToPicture) ws world)
+    mainLoop context newTime newDelta newWorld
 
 #if defined(USE_SGE)
 withPlatform :: WindowTitle -> FilePath -> (SGEPlatform -> IO ()) -> IO ()
