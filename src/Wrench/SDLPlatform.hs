@@ -136,18 +136,19 @@ instance Platform SDLPlatform where
     SDLR.renderCopy (p ^. sdlpRenderer) texture Nothing (Just $ SDLRect.Rect (pos ^. _x ^. floored) (pos ^. _y ^. floored) width height)
     destroyTexture texture
   viewportSize p = sizeToPoint <$> SDLV.getWindowSize (p ^. sdlpWindow)
-  renderDrawSprite p texture srcRect destRect rads = do
-    let rot = rads ^. degrees
-        rotCenter = Nothing
-        flipFlags = []
-    SDLR.renderCopyEx
-      (p ^. sdlpRenderer)
-      texture
-      (Just $ srcRect ^. from wrenchRect)
-      (Just $ destRect ^. from wrenchRect)
-      (rot ^. getDegrees)
-      rotCenter
-      flipFlags
+  renderDrawSprites p sprites =
+    forM_ sprites $ \sprite -> do
+      let rot = sprite ^. spriteRotation ^. degrees
+          rotCenter = Nothing
+          flipFlags = []
+      SDLR.renderCopyEx
+        (p ^. sdlpRenderer)
+        (sprite ^. spriteImage)
+        (Just $ sprite ^. spriteSrcRect ^. from wrenchRect)
+        (Just $ sprite ^. spriteDestRect ^. from wrenchRect)
+        (rot ^. getDegrees)
+        rotCenter
+        flipFlags
 
 destroyTexture :: SDLT.Texture -> IO ()
 destroyTexture t = SDLR.destroyTexture t

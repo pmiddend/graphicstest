@@ -1,4 +1,5 @@
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TemplateHaskell #-}
 module Wrench.Platform where
 
 import           ClassyPrelude
@@ -8,11 +9,21 @@ import           Wrench.Color
 import           Wrench.Event
 import           Wrench.Point
 import           Wrench.Rectangle
+import Control.Lens.TH
 
 newtype WindowTitle = WindowTitle { unpackWindowTitle :: T.Text }
 type SrcRect = Rectangle
 type DestRect = Rectangle
 type FontSize = Int
+
+data SpriteInstance image = SpriteInstance {
+    _spriteImage :: image
+  , _spriteSrcRect :: Rectangle
+  , _spriteDestRect :: Rectangle
+  , _spriteRotation :: Radians
+  }
+
+$(makeLenses ''SpriteInstance)
 
 class Platform p where
   type PlatformImage p :: *
@@ -27,4 +38,4 @@ class Platform p where
   renderFinish :: p -> IO ()
   renderText :: p -> (PlatformFont p) -> T.Text -> Color -> Point -> IO ()
   viewportSize :: p -> IO Point
-  renderDrawSprite :: p -> (PlatformImage p) -> SrcRect -> DestRect -> Radians -> IO ()
+  renderDrawSprites :: p -> [SpriteInstance (PlatformImage p)] -> IO ()

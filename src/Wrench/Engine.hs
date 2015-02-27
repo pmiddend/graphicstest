@@ -26,16 +26,17 @@ import           Linear.Matrix             (M33, eye3, (!*), (!*!))
 import           Linear.V2                 (V2 (..), _x, _y)
 import           Linear.V3                 (V3 (..))
 import           Numeric.Lens              (dividing)
+import qualified Data.Text as T
 import           Wrench.Angular
 import           Wrench.Color
 import           Wrench.Event
+import           Wrench.Rectangle
 import           Wrench.FloatType          (FloatType)
 import           Wrench.ImageData
 import           Wrench.Picture
 import           Wrench.Platform
+import           Wrench.SpriteIdentifier
 import           Wrench.Point              (Point)
-import           Wrench.Rectangle          (rectangleDimensions,
-                                            rectangleFromPoints)
 import           Wrench.RenderPositionMode
 #if defined(USE_SGE)
 import           Wrench.SGEPlatform
@@ -89,13 +90,17 @@ data RenderState p = RenderState { _rsTransformation :: M33 FloatType
 
 $(makeLenses ''RenderState)
 
-renderPicture :: Platform p => RenderState p -> Picture -> IO ()
+data RenderOperation image font = RenderOperationSprite image Rectangle Rectangle Radians
+                                | RenderOperationText font T.Text Color Point
+
+renderPicture :: Platform p => RenderState p -> Picture -> IO [RenderOperation (PlatformImage p) (PlatformFont p)]
 renderPicture rs p = case p of
-  Blank -> return ()
+  Blank -> return []
   Line _ _ -> undefined
-  Text s -> renderText (rs ^. rsPlatform) (rs ^. rsFont) (s) (rs ^. rsColor) (((rs ^. rsTransformation) !* V3 0 0 1) ^. toV2)
+  --Text s -> renderText (rs ^. rsPlatform) (rs ^. rsFont) (s) (rs ^. rsColor) (((rs ^. rsTransformation) !* V3 0 0 1) ^. toV2)
+  Text s -> return [RenderOperationText (rs ^. rsFont) s (rs ^. rsColor) (((rs ^. rsTransformation) !* V3 0 0 1) ^. toV2)]
   InColor color picture -> renderPicture (rs & rsColor .~ color) picture
-  Pictures ps -> mapM_ (renderPicture rs) ps
+  Pictures ps -> concatMapM (renderPicture rs) ps
   Translate point picture -> renderPicture (rs & rsTransformation %~ (!*! mkTranslation point)) picture
   Rotate r picture -> renderPicture (rs & ((rsRotation +~ r) . (rsTransformation %~ (!*! mkRotation (r ^. getRadians))))) picture
   Scale s picture -> renderPicture (rs & rsTransformation %~ (!*! mkScale s)) picture
@@ -108,7 +113,7 @@ renderPicture rs p = case p of
           RenderPositionTopLeft -> origin
         rot = rs ^. rsRotation
         destRect = (rectangleFromPoints pos (pos + (srcRect ^. rectangleDimensions)))
-    renderDrawSprite (rs ^. rsPlatform) image srcRect destRect rot
+    return [RenderOperationSprite image srcRect destRect rot]
 
 wrenchRender :: Platform p => p -> SurfaceMap (PlatformImage p) -> PlatformFont p -> Maybe Color -> Picture -> IO ()
 wrenchRender platform surfaceMap font backgroundColor outerPicture = do
