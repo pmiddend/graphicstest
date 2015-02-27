@@ -124,10 +124,12 @@ instance Platform SDLPlatform where
   type PlatformFont SDLPlatform = TTFFont
   pollEvents _ = mapMaybe (^. fromSdlEvent) <$> unfoldM SDLE.pollEvent
   loadFont _ fp fs = SDLTtf.openFont (fpToString fp) fs
+  freeFont _ _ = return ()
   renderBegin _ = return ()
   renderClear p c = setRenderDrawColor (p ^. sdlpRenderer) c >> renderClear' (p ^. sdlpRenderer)
   renderFinish p = renderFinish' (p ^. sdlpRenderer)
   loadImage p fp = SDLImage.loadTexture (p ^. sdlpRenderer) (fpToString fp)
+  freeImage _ texture = SDLR.destroyTexture texture
   renderText p font s c pos = do
     texture <- createFontTexture (p ^. sdlpRenderer) font s c
     (width, height) <- SDLTtf.sizeText font (T.unpack s)

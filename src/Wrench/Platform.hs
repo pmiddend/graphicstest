@@ -18,7 +18,9 @@ class Platform p where
   type PlatformImage p :: *
   type PlatformFont p :: *
   loadImage :: p -> FilePath -> IO (PlatformImage p)
+  freeImage :: p -> PlatformImage p -> IO ()
   loadFont :: p -> FilePath -> FontSize -> IO (PlatformFont p)
+  freeFont :: p -> PlatformFont p -> IO ()
   pollEvents :: p -> IO [Event]
   renderBegin :: p -> IO ()
   renderClear :: p -> Color -> IO ()
