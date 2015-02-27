@@ -115,7 +115,7 @@ withSDLPlatform :: WindowTitle -> (SDLPlatform -> IO ()) -> IO ()
 withSDLPlatform windowTitle cb =
   withFontInit $
     withImgInit $
-      withWindow windowTitle $ \window -> do
+      withWindow (unpackWindowTitle windowTitle) $ \window -> do
         withRenderer window $ \renderer -> do
           cb (SDLPlatform renderer window)
 

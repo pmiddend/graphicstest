@@ -9,8 +9,7 @@ import           Wrench.Event
 import           Wrench.Point
 import           Wrench.Rectangle
 
-type WindowTitle = T.Text
-type BackgroundColor = Color
+newtype WindowTitle = WindowTitle { unpackWindowTitle :: T.Text }
 type SrcRect = Rectangle
 type DestRect = Rectangle
 type FontSize = Int

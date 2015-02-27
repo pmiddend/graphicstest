@@ -9,6 +9,13 @@ module Wrench.Engine(
   , Event(..)
   , ViewportSize
   , withPlatform
+  , MediaPath(..)
+  , BackgroundColor(..)
+  , noBackgroundColor
+  , StepsPerSecond(..)
+  , ToPictureHandler(..)
+  , EventHandler(..)
+  , TickHandler(..)
   ) where
 
 import           Control.Lens              ((&), (^.))
@@ -38,9 +45,18 @@ import           Wrench.SDLPlatform
 import           ClassyPrelude
 import           Wrench.Time
 
-type ViewportSize = Point
+newtype MediaPath = MediaPath { unpackMediaPath :: FilePath }
+newtype BackgroundColor = BackgroundColor { unpackBackgroundColor :: Maybe Color }
+newtype ToPictureHandler world = ToPictureHandler { unpackToPictureHandler :: (ViewportSize -> world -> Picture) }
+newtype EventHandler world = EventHandler { unpackEventHandler :: (Event -> world -> world) }
+newtype TickHandler world = TickHandler { unpackTickHandler :: (TimeDelta -> world -> world) }
 
-type StepsPerSecond = Int
+noBackgroundColor :: BackgroundColor
+noBackgroundColor = BackgroundColor Nothing
+
+newtype StepsPerSecond = StepsPerSecond { unpackStepsPerSecond :: Int }
+
+type ViewportSize = Point
 
 -- toV3 :: Num a => V2 a -> V3 a
 -- toV3 (V2 x y) = V3 x y 1
@@ -94,7 +110,7 @@ renderPicture rs p = case p of
         destRect = (rectangleFromPoints pos (pos + (srcRect ^. rectangleDimensions)))
     renderDrawSprite (rs ^. rsPlatform) image srcRect destRect rot
 
-wrenchRender :: Platform p => p -> SurfaceMap (PlatformImage p) -> PlatformFont p -> Maybe BackgroundColor -> Picture -> IO ()
+wrenchRender :: Platform p => p -> SurfaceMap (PlatformImage p) -> PlatformFont p -> Maybe Color -> Picture -> IO ()
 wrenchRender platform surfaceMap font backgroundColor outerPicture = do
   renderBegin platform
   maybe (return ()) (renderClear platform) backgroundColor
@@ -104,8 +120,8 @@ wrenchRender platform surfaceMap font backgroundColor outerPicture = do
 data MainLoopContext p world = MainLoopContext { _mlPlatform        :: p
                                                , _mlSurfaceData     :: SurfaceMap (PlatformImage p)
                                                , _mlFont            :: PlatformFont p
-                                               , _mlBackgroundColor :: Maybe BackgroundColor
-                                               , _mlStepsPerSecond  :: StepsPerSecond
+                                               , _mlBackgroundColor :: Maybe Color
+                                               , _mlStepsPerSecond  :: Int
                                                , _mlWorldToPicture  :: ViewportSize -> world -> Picture
                                                , _mlEventHandler    :: Event -> world -> world
                                                , _mlSimulationStep  :: TimeDelta -> world -> world
@@ -151,17 +167,25 @@ withPlatform = withSDLPlatform
 
 wrenchPlay :: Platform p =>
               p ->
-              FilePath ->
-              Maybe BackgroundColor ->
+              MediaPath ->
+              BackgroundColor ->
               world ->
               StepsPerSecond ->
-              (ViewportSize -> world -> Picture) ->
-              (Event -> world -> world) ->
-              (TimeDelta -> world -> world) ->
+              ToPictureHandler world ->
+              EventHandler world ->
+              TickHandler world ->
               IO ()
 wrenchPlay platform mediaPath backgroundColor initialWorld stepsPerSecond worldToPicture eventHandler simulationStep = do
   time <- getTicks
-  surfaceData <- readMediaFiles (loadImage platform) mediaPath
-  font <- loadFont platform (mediaPath </> "stdfont.ttf") 15
-  let loopContext = MainLoopContext platform (fst surfaceData) font backgroundColor stepsPerSecond worldToPicture eventHandler simulationStep
+  surfaceData <- readMediaFiles (loadImage platform) (unpackMediaPath mediaPath)
+  font <- loadFont platform ((unpackMediaPath mediaPath) </> "stdfont.ttf") 15
+  let loopContext = MainLoopContext
+                    platform
+                    (fst surfaceData)
+                    font
+                    (unpackBackgroundColor backgroundColor)
+                    (unpackStepsPerSecond stepsPerSecond)
+                    (unpackToPictureHandler worldToPicture)
+                    (unpackEventHandler eventHandler)
+                    (unpackTickHandler simulationStep)
   mainLoop loopContext time 0 initialWorld
