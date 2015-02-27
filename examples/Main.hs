@@ -6,11 +6,31 @@ import           Wrench.Angular
 import           Wrench.Color
 import           Wrench.Engine
 import           Wrench.Time
+import           Wrench.Point
+import           Wrench.KeyMovement
 import           Wrench.Platform
+import qualified Wrench.Keysym as Key
 import ClassyPrelude
+import Linear.Vector((^+^))
 
-toPicture :: ViewportSize -> Double -> Picture
-toPicture _ td = Translate (V2 100 100) $ Rotate (Degrees td ^. from degrees) $ Sprite "car" RenderPositionCenter
+data World = World {
+    carPosition :: Point
+  }
+
+toPicture :: ViewportSize -> World -> Picture
+toPicture _ world = Translate (carPosition world) $ Sprite "car" RenderPositionCenter
+
+initialWorld :: World
+initialWorld = World (V2 100 100)
+
+eventHandler :: Event -> World -> World
+eventHandler event world = case event of
+  Keyboard{keyMovement=KeyDown, keySym=Key.Left} -> World (carPosition world ^+^ (V2 (-10) 0))
+  Keyboard{keyMovement=KeyDown, keySym=Key.Right} -> World (carPosition world ^+^ (V2 (10) 0))
+  Keyboard{keyMovement=KeyDown, keySym=Key.Up} -> World (carPosition world ^+^ (V2 0 (-10)))
+  Keyboard{keyMovement=KeyDown, keySym=Key.Down} -> World (carPosition world ^+^ (V2 0 (10)))
+  _ -> world
+
 
 main :: IO ()
 main = do
@@ -19,8 +39,8 @@ main = do
         p
         (MediaPath "media")
         (BackgroundColor (Just colorsWhite))
-        0
+        initialWorld
         (StepsPerSecond 1)
         (ToPictureHandler toPicture)
-        (EventHandler (\_ _ -> 0))
-        (TickHandler (\td _ -> traceShowId (toSeconds td)))
+        (EventHandler eventHandler)
+        (TickHandler (\_ w -> w))
