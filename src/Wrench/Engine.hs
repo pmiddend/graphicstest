@@ -158,7 +158,7 @@ mainLoop context prevTime prevDelta world = do
     mainLoop context newTime newDelta newWorld
 
 #if defined(USE_SGE)
-withPlatform :: WindowTitle -> FilePath -> (SGEPlatform -> IO ()) -> IO ()
+withPlatform :: WindowTitle -> (SGEPlatform -> IO ()) -> IO ()
 withPlatform = withSGEPlatform
 #else
 withPlatform :: WindowTitle -> (SDLPlatform -> IO ()) -> IO ()

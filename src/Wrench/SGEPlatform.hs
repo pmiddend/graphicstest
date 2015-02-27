@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE TypeFamilies               #-}
 
 module Wrench.SGEPlatform(
        SGEPlatform,
@@ -7,43 +8,36 @@ module Wrench.SGEPlatform(
 where
 
 import           ClassyPrelude
-import           Control.Lens ((^.), _1)
+import           Control.Lens ((^.), _2)
 import           Control.Lens.TH (makeLenses)
 import qualified Data.Text as T ( unpack )
 import           GHC.Float ( double2Float )
 import           Linear.V2(_x, _y, V2(..))
-import qualified SGE.Font ( ObjectPtr, draw, withFont )
+import qualified SGE.Font ( AddedPtr, ObjectPtr, SystemPtr, addFontExn, draw, createFontExn, destroyAdded, destroyFont )
 import qualified SGE.Image ( RGBA, makeRGBA )
+import qualified SGE.Image2D ( SystemPtr )
 import qualified SGE.Input ( KeyboardPtr, KeyboardKey(..), KeyState(..), withKeyCallback, withKeyRepeatCallback )
 import qualified SGE.Renderer ( ContextPtr, DevicePtr, PlanarTexturePtr, beginRenderingExn, clear, destroyPlanarTexture, endRenderingAndDestroy, onscreenTarget, onscreenTargetDim, planarTextureFromPathExn )
 import qualified SGE.Sprite ( Object(..), draw )
 import qualified SGE.Systems ( InstancePtr, fontSystem, imageSystem, keyboard, renderer, windowSystem, with )
-import qualified SGE.Texture ( PartPtr, destroyPart, partRawExn )
-import qualified SGE.Types ( Pos(..), Dim(..), dimW, dimH )
+import qualified SGE.Texture ( withPartRawRect )
+import qualified SGE.Types ( Pos(..), Dim(..), Rect(..), dimW, dimH )
 import qualified SGE.Window ( SystemPtr, poll )
 import Wrench.Angular ( getRadians )
 import Wrench.Color ( Color, colorAlpha, colorBlue, colorGreen, colorRed )
 import Wrench.Event ( Event(..) )
-import Wrench.ImageData ( AnimMap, SurfaceData, SurfaceMap, readMediaFiles )
 import Wrench.KeyMovement ( KeyMovement(..) )
 import qualified Wrench.Keysym as Keysym ( Keysym(..) )
-import Wrench.Platform ( Platform(..), WindowTitle )
+import Wrench.Platform ( Platform(..), WindowTitle(..) )
 import Wrench.Point ( Point )
-import Wrench.Rectangle ( rectLeftTop, rectangleDimensions )
-import Wrench.SpriteIdentifier ( SpriteIdentifier )
-
-type SpriteInfo = (SGE.Renderer.PlanarTexturePtr, SGE.Texture.PartPtr)
+import Wrench.Rectangle ( Rectangle, rectLeftTop, rectangleDimensions )
 
 data SGEPlatform = SGEPlatform {
      _sgepSystem :: SGE.Systems.InstancePtr
-   , _sgepSurfaceMap :: (SurfaceMap SpriteInfo , AnimMap)
-   , _sgepFont :: SGE.Font.ObjectPtr
    , _sgepContext :: IORef (Maybe SGE.Renderer.ContextPtr)
    }
 
 $(makeLenses ''SGEPlatform)
-
-type SpriteData = SurfaceData SpriteInfo
 
 keyboard :: SGEPlatform -> SGE.Input.KeyboardPtr
 keyboard p = SGE.Systems.keyboard (p ^. sgepSystem)
@@ -53,6 +47,12 @@ renderer p = SGE.Systems.renderer (p ^. sgepSystem)
 
 window :: SGEPlatform -> SGE.Window.SystemPtr
 window p = SGE.Systems.windowSystem (p ^. sgepSystem)
+
+fontSystem :: SGEPlatform -> SGE.Font.SystemPtr
+fontSystem p = SGE.Systems.fontSystem (p ^. sgepSystem)
+
+imageSystem :: SGEPlatform -> SGE.Image2D.SystemPtr
+imageSystem p = SGE.Systems.imageSystem (p ^. sgepSystem)
 
 failMaybe :: Maybe a -> String -> IO a
 failMaybe mb message =
@@ -73,6 +73,9 @@ toSGEPos p = SGE.Types.Pos (round (p ^._x), round (p ^._y))
 
 toSGEDim :: Point -> SGE.Types.Dim
 toSGEDim p = SGE.Types.Dim (round (p ^._x), round (p ^._y))
+
+toSGERect :: Rectangle -> SGE.Types.Rect
+toSGERect r = SGE.Types.Rect (toSGEPos (r ^. rectLeftTop), toSGEDim (r ^. rectangleDimensions))
 
 fromSGEDim :: SGE.Types.Dim -> Point
 fromSGEDim d = V2 (fromIntegral (SGE.Types.dimW d)) (fromIntegral (SGE.Types.dimH d))
@@ -254,12 +257,20 @@ keyCallback inputs key status = appendInput inputs (KeyEvent (key, status))
 keyRepeatCallback :: InputsRef -> SGE.Input.KeyboardKey -> IO ()
 keyRepeatCallback inputs key = appendInput inputs (KeyRepeatEvent key)
 
-lookupSpriteError :: SGEPlatform -> SpriteIdentifier -> IO SpriteData
-lookupSpriteError p identifier =
-                 failMaybe (identifier `lookup` ( p ^. sgepSurfaceMap ^. _1 ))
-                           ("Couldn't find image \"" ++ (T.unpack identifier) ++ "\"")
-
 instance Platform SGEPlatform where
+         type PlatformImage SGEPlatform = SGE.Renderer.PlanarTexturePtr
+         type PlatformFont SGEPlatform = (SGE.Font.AddedPtr, SGE.Font.ObjectPtr)
+         loadImage p path =
+                   SGE.Renderer.planarTextureFromPathExn (renderer p) (imageSystem p) (fpToString path)
+         freeImage _ tex =
+                   SGE.Renderer.destroyPlanarTexture tex
+         -- FIXME: This is not exception-safe
+         loadFont p path size = do
+                  added <- SGE.Font.addFontExn (fontSystem p) (fpToString path)
+                  font <- SGE.Font.createFontExn (fontSystem p) Nothing (Just size)
+                  return (added, font)
+         freeFont _ (added, font) =
+                  SGE.Font.destroyFont font >> SGE.Font.destroyAdded added
          pollEvents p = do
                     inputs <- newIORef []
                     SGE.Input.withKeyCallback (keyboard p) (keyCallback inputs)
@@ -274,35 +285,19 @@ instance Platform SGEPlatform where
                       context <- contextError p
                       SGE.Renderer.endRenderingAndDestroy (renderer p) context
                       >> writeIORef (p ^. sgepContext) Nothing
-         renderText p text color pos = do
+         renderText p font text color pos = do
                       context <- contextError p
-                      SGE.Font.draw (renderer p) context (p ^. sgepFont) (unpack text) (toSGEPos pos) (toSGEColor color)
-         spriteDimensions p identifier = do
-                          (_, rect) <- lookupSpriteError p identifier
-                          return rect
+                      SGE.Font.draw (renderer p) context (font ^. _2) (unpack text) (toSGEPos pos) (toSGEColor color)
          viewportSize p = do
                       dim <- SGE.Renderer.onscreenTargetDim (SGE.Renderer.onscreenTarget (renderer p))
                       return $ fromSGEDim dim
-         renderDrawSprite p identifier dest rot = do
-                          ((_, tex), _) <- lookupSpriteError p identifier
+         renderDrawSprite p image src dest rot = do
                           context <- contextError p
-                          SGE.Sprite.draw (renderer p) context [SGE.Sprite.Object (toSGEPos (dest ^. rectLeftTop)) (toSGEDim (dest ^. rectangleDimensions)) (double2Float (rot ^. getRadians)) tex]
+                          SGE.Texture.withPartRawRect image (toSGERect src) $ \part ->
+                                                      SGE.Sprite.draw (renderer p) context [SGE.Sprite.Object (toSGEPos (dest ^. rectLeftTop)) (toSGEDim (dest ^. rectangleDimensions)) (double2Float (rot ^. getRadians)) part]
 
--- FIXME: This is not exception-safe
-loadFile :: SGE.Systems.InstancePtr -> FilePath -> IO SpriteInfo
-loadFile system path = do
-         texture <- SGE.Renderer.planarTextureFromPathExn (SGE.Systems.renderer system) (SGE.Systems.imageSystem system) (fpToString path)
-         part <- SGE.Texture.partRawExn texture
-         return (texture, part)
-
-destroyTexture :: SpriteData -> IO ()
-destroyTexture ((t, p), _) = SGE.Renderer.destroyPlanarTexture t >> SGE.Texture.destroyPart p
-
-withSGEPlatform :: WindowTitle -> FilePath -> (SGEPlatform -> IO ()) -> IO ()
-withSGEPlatform windowTitle mediaPath cb =
-                SGE.Systems.with (T.unpack windowTitle) $ \system ->
-                SGE.Font.withFont (SGE.Systems.fontSystem system) $ \font -> do
-                                  surfaceData <- readMediaFiles (loadFile system) mediaPath
-                                  context <- newIORef Nothing
-                                  cb (SGEPlatform system surfaceData font context) >>
-                                     mapM_ destroyTexture (surfaceData ^. _1)
+withSGEPlatform :: WindowTitle -> (SGEPlatform -> IO ()) -> IO ()
+withSGEPlatform windowTitle cb =
+                SGE.Systems.with (T.unpack (unpackWindowTitle windowTitle)) $ \system -> do
+                                 context <- newIORef Nothing
+                                 cb (SGEPlatform system context)
