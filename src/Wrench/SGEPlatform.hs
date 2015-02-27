@@ -15,10 +15,10 @@ import           Linear.V2(_x, _y, V2(..))
 import qualified SGE.Font ( ObjectPtr, draw, withFont )
 import qualified SGE.Image ( RGBA, makeRGBA )
 import qualified SGE.Input ( KeyboardPtr, KeyboardKey(..), KeyState(..), withKeyCallback, withKeyRepeatCallback )
-import qualified SGE.Renderer ( ContextPtr, DevicePtr, PlanarTexturePtr, beginRenderingExn, clear, endRenderingAndDestroy, onscreenTarget, onscreenTargetDim, planarTextureFromPathExn )
+import qualified SGE.Renderer ( ContextPtr, DevicePtr, PlanarTexturePtr, beginRenderingExn, clear, destroyPlanarTexture, endRenderingAndDestroy, onscreenTarget, onscreenTargetDim, planarTextureFromPathExn )
 import qualified SGE.Sprite ( Object(..), draw )
 import qualified SGE.Systems ( InstancePtr, fontSystem, imageSystem, keyboard, renderer, windowSystem, with )
-import qualified SGE.Texture ( PartPtr, partRawExn )
+import qualified SGE.Texture ( PartPtr, destroyPart, partRawExn )
 import qualified SGE.Types ( Pos(..), Dim(..), dimW, dimH )
 import qualified SGE.Window ( SystemPtr, poll )
 import Wrench.Angular ( getRadians )
@@ -295,10 +295,14 @@ loadFile system path = do
          part <- SGE.Texture.partRawExn texture
          return (texture, part)
 
+destroyTexture :: SpriteData -> IO ()
+destroyTexture ((t, p), _) = SGE.Renderer.destroyPlanarTexture t >> SGE.Texture.destroyPart p
+
 withSGEPlatform :: WindowTitle -> FilePath -> (SGEPlatform -> IO ()) -> IO ()
 withSGEPlatform windowTitle mediaPath cb =
                 SGE.Systems.with (T.unpack windowTitle) $ \system ->
                 SGE.Font.withFont (SGE.Systems.fontSystem system) $ \font -> do
                                   surfaceData <- readMediaFiles (loadFile system) mediaPath
                                   context <- newIORef Nothing
-                                  cb (SGEPlatform system surfaceData font context)
+                                  cb (SGEPlatform system surfaceData font context) >>
+                                     mapM_ destroyTexture (surfaceData ^. _1)
