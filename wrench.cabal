@@ -69,6 +69,7 @@ library
   -- hs-source-dirs:
   default-language:    Haskell2010
   default-extensions: NoImplicitPrelude
+                    , OverloadedStrings
   ghc-options: -Wall
 
 executable example_main

@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 module Main where
 
 import           Control.Lens   (from, (^.))
@@ -15,7 +14,7 @@ toPicture _ td = Translate (V2 100 100) $ Rotate (Degrees td ^. from degrees) $ 
 
 main :: IO ()
 main = do
-  withPlatform "window title" "media" $ \p -> do
+  withPlatform "window title" $ \p -> do
     wrenchPlay
         p
         "media"

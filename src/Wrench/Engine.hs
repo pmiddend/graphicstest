@@ -1,6 +1,5 @@
 {-# LANGUAGE CPP                        #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE RankNTypes                 #-}
 {-# LANGUAGE TemplateHaskell            #-}
 module Wrench.Engine(
@@ -146,7 +145,7 @@ mainLoop context prevTime prevDelta world = do
 withPlatform :: WindowTitle -> FilePath -> (SGEPlatform -> IO ()) -> IO ()
 withPlatform = withSGEPlatform
 #else
-withPlatform :: WindowTitle -> FilePath -> (SDLPlatform -> IO ()) -> IO ()
+withPlatform :: WindowTitle -> (SDLPlatform -> IO ()) -> IO ()
 withPlatform = withSDLPlatform
 #endif
 
