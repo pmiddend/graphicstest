@@ -19,39 +19,8 @@ flag sge
   Description: Use SGE as backend
   Default: False
 
-executable maintest
-  main-is:             Wrench/Main.hs
-  hs-source-dirs:      src
-  -- other-extensions:
-  build-depends:       base >=4.7 && <4.8
-                     , linear
-                     , lens
-                     , SDL2 == 0.1.0
-                     , sdl2-image == 0.1.0.0
-                     , SDL2-ttf
-                     , containers
-                     , text
-                     , parsec
-                     , filepath
-                     , directory
-                     , monad-loops
-                     , clock
-                     , transformers
-                     , classy-prelude
-                     , system-filepath
-                     , mtl
-  if flag(sge)
-    build-depends:     hsge
-    cpp-options:       -DUSE_SGE
-  -- hs-source-dirs:
-  default-language:    Haskell2010
-  default-extensions: NoImplicitPrelude
-  ghc-options: -Wall
-
 library
---  main-is:             Wrench/Main.hs
   hs-source-dirs:      src
-  -- other-extensions:    
   other-modules:       Wrench.Filesystem
                      , Wrench.Parsec
   if flag(sge)
@@ -65,6 +34,12 @@ library
                      , Wrench.Point
                      , Wrench.Rectangle
                      , Wrench.Time
+                     , Wrench.Picture
+                     , Wrench.Platform
+                     , Wrench.SDLPlatform
+                     , Wrench.RenderPositionMode
+                     , Wrench.KeyMovement
+                     , Wrench.Event
   build-depends:       base >=4.7 && <4.8
                      , linear
                      , lens
@@ -83,6 +58,23 @@ library
                      , lifted-base
                      , classy-prelude
                      , system-filepath
+  if flag(sge)
+    build-depends:     hsge
+    cpp-options:       -DUSE_SGE
+  -- hs-source-dirs:
+  default-language:    Haskell2010
+  default-extensions: NoImplicitPrelude
+  ghc-options: -Wall
+
+executable example_main
+  main-is:             Main.hs
+  hs-source-dirs:      examples
+  -- other-extensions:
+  build-depends:       base >=4.7 && <4.8
+                     , wrench
+                     , lens
+                     , linear
+                     , classy-prelude
   if flag(sge)
     build-depends:     hsge
     cpp-options:       -DUSE_SGE
