@@ -11,6 +11,7 @@ module Wrench.ImageData(
   animFrameSwitch,
   animFrames,
   SurfaceMap,
+  findSurfaceUnsafe,
   SurfaceData
   ) where
 
@@ -21,6 +22,7 @@ import           Text.Parsec               (many1)
 import           Text.Parsec.Char          (char, noneOf)
 import           Text.Parsec.Combinator    (eof, sepEndBy1)
 import           ClassyPrelude
+import qualified Data.Text as T
 import           Filesystem.Path.CurrentOS
 import           Text.Parsec.Prim          (ParsecT, Stream)
 import           Wrench.Filesystem
@@ -50,6 +52,9 @@ type AnimId = Text
 type AnimMap = Map AnimId Animation
 
 type ImageLoadFunction m a = FilePath -> m a
+
+findSurfaceUnsafe :: SurfaceMap a -> ImageId -> SurfaceData a
+findSurfaceUnsafe sm im = fromMaybe (error $ "Cannot find image \"" <> T.unpack im <> "\"") (im `M.lookup` sm)
 
 -- Holt alle "Descriptorfiles" (also die mit .txt enden) aus dem Directory
 getDescFilesInDir :: MonadIO m => FilePath -> m [ImageDescFile]

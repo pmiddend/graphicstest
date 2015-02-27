@@ -18,6 +18,7 @@ main = do
   withPlatform "window title" "media" $ \p -> do
     wrenchPlay
         p
+        "media"
         (Just colorsWhite)
         0
         1

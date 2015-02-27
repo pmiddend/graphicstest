@@ -24,6 +24,7 @@ import           Wrench.Color
 import           Wrench.Event
 import           Wrench.FloatType          (FloatType)
 import           Wrench.Picture
+import           Wrench.ImageData
 import           Wrench.Platform
 import           Wrench.Point              (Point)
 import           Wrench.Rectangle          (rectangleDimensions,
@@ -64,6 +65,7 @@ mkScale p = V3 (V3 (p ^. _x) 0 0) (V3 0 (p ^. _y) 0) (V3 0 0 1)
 
 data RenderState p = RenderState { _rsTransformation :: M33 FloatType
                                  , _rsPlatform       :: p
+                                 , _rsSurfaceData    :: SurfaceMap (PlatformImage p)
                                  , _rsColor          :: Color
                                  , _rsRotation       :: Radians
                                  }
@@ -81,24 +83,25 @@ renderPicture rs p = case p of
   Rotate r picture -> renderPicture (rs & ((rsRotation +~ r) . (rsTransformation %~ (!*! mkRotation (r ^. getRadians))))) picture
   Scale s picture -> renderPicture (rs & rsTransformation %~ (!*! mkScale s)) picture
   Sprite identifier positionMode -> do
-    rectangle <- spriteDimensions (rs ^. rsPlatform) identifier
-    let m = rs ^. rsTransformation
+    let (image,srcRect) = findSurfaceUnsafe (rs ^. rsSurfaceData) identifier
+        m = rs ^. rsTransformation
         origin = (m !* V3 0 0 1) ^. toV2
         pos = case positionMode of
-          RenderPositionCenter -> origin - (rectangle ^. rectangleDimensions ^. dividing 2)
+          RenderPositionCenter -> origin - (srcRect ^. rectangleDimensions ^. dividing 2)
           RenderPositionTopLeft -> origin
         rot = rs ^. rsRotation
-        destRect = (rectangleFromPoints pos (pos + (rectangle ^. rectangleDimensions)))
-    renderDrawSprite (rs ^. rsPlatform) identifier destRect rot
+        destRect = (rectangleFromPoints pos (pos + (srcRect ^. rectangleDimensions)))
+    renderDrawSprite (rs ^. rsPlatform) image srcRect destRect rot
 
-wrenchRender :: Platform p => p -> Maybe BackgroundColor -> Picture -> IO ()
-wrenchRender platform backgroundColor outerPicture = do
+wrenchRender :: Platform p => p -> SurfaceMap (PlatformImage p) -> Maybe BackgroundColor -> Picture -> IO ()
+wrenchRender platform surfaceMap backgroundColor outerPicture = do
   renderBegin platform
   maybe (return ()) (renderClear platform) backgroundColor
-  renderPicture (RenderState eye3 platform (fromMaybe colorsWhite backgroundColor) 0) outerPicture
+  renderPicture (RenderState eye3 platform surfaceMap (fromMaybe colorsWhite backgroundColor) 0) outerPicture
   renderFinish platform
 
 data MainLoopContext p world = MainLoopContext { _mlPlatform        :: p
+                                               , _mlSurfaceData     :: SurfaceMap (PlatformImage p)
                                                , _mlBackgroundColor :: Maybe BackgroundColor
                                                , _mlStepsPerSecond  :: StepsPerSecond
                                                , _mlWorldToPicture  :: ViewportSize -> world -> Picture
@@ -130,6 +133,7 @@ mainLoop context prevTime prevDelta world = do
     ws <- viewportSize platform
     wrenchRender
         platform
+        (context ^. mlSurfaceData)
         (context ^. mlBackgroundColor)
         ((context ^. mlWorldToPicture) ws world)
     mainLoop context newTime newDelta newWorld
@@ -144,6 +148,7 @@ withPlatform = withSDLPlatform
 
 wrenchPlay :: Platform p =>
               p ->
+              FilePath ->
               Maybe BackgroundColor ->
               world ->
               StepsPerSecond ->
@@ -151,6 +156,8 @@ wrenchPlay :: Platform p =>
               (Event -> world -> world) ->
               (TimeDelta -> world -> world) ->
               IO ()
-wrenchPlay platform backgroundColor initialWorld stepsPerSecond worldToPicture eventHandler simulationStep = do
+wrenchPlay platform mediaPath backgroundColor initialWorld stepsPerSecond worldToPicture eventHandler simulationStep = do
   time <- getTicks
-  mainLoop (MainLoopContext platform backgroundColor stepsPerSecond worldToPicture eventHandler simulationStep) time 0 initialWorld
+  surfaceData <- readMediaFiles (loadImage platform) mediaPath
+  let loopContext = MainLoopContext platform (fst surfaceData) backgroundColor stepsPerSecond worldToPicture eventHandler simulationStep
+  mainLoop loopContext time 0 initialWorld
