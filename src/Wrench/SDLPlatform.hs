@@ -1,17 +1,16 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE RankNTypes                 #-}
 {-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE TypeFamilies               #-}
 module Wrench.SDLPlatform where
 
 import           ClassyPrelude             hiding (lookup)
-import           Control.Lens              ((^.), _1)
+import           Control.Lens              ((^.))
 import           Control.Lens.Getter       (Getter, to)
 import           Control.Lens.Iso          (Iso', from, iso)
 import           Control.Lens.TH           (makeLenses)
 import           Control.Monad.Loops       (unfoldM)
-import           Data.Map.Strict           (lookup)
 import qualified Data.Text                 as T
 import qualified Graphics.UI.SDL.Color     as SDLC
 import qualified Graphics.UI.SDL.Events    as SDLE
@@ -28,9 +27,8 @@ import           Linear.V2                 (V2 (..), _x, _y)
 import           Wrench.Angular
 import           Wrench.Color
 import           Wrench.Event
-import           Wrench.ImageData
 import           Wrench.KeyMovement
-import qualified Wrench.Keysym as Keysym
+import qualified Wrench.Keysym             as Keysym
 import           Wrench.Platform
 import           Wrench.Point
 import           Wrench.Rectangle
@@ -39,9 +37,8 @@ floored :: (RealFrac a,Integral b) => Getter a b
 floored = to floor
 
 data SDLPlatform = SDLPlatform {
-    _sdlpRenderer   :: SDLT.Renderer
-  , _sdlpWindow     :: SDLT.Window
-  , _sdlpFont       :: TTFFont
+    _sdlpRenderer :: SDLT.Renderer
+  , _sdlpWindow   :: SDLT.Window
   }
 
 $(makeLenses ''SDLPlatform)
@@ -115,31 +112,26 @@ withRenderer window callback =
 sizeToPoint :: SDLT.Size -> Point
 sizeToPoint (SDLT.Size w h) = V2 (fromIntegral w) (fromIntegral h)
 
-withSDLPlatform :: WindowTitle -> FilePath -> (SDLPlatform -> IO ()) -> IO ()
-withSDLPlatform windowTitle mediaPath cb =
+withSDLPlatform :: WindowTitle -> (SDLPlatform -> IO ()) -> IO ()
+withSDLPlatform windowTitle cb =
   withFontInit $
     withImgInit $
       withWindow windowTitle $ \window -> do
         withRenderer window $ \renderer -> do
-          stdfont <- liftIO $ SDLTtf.openFont (fpToString (mediaPath </> "stdfont.ttf") ) 15
-          cb (SDLPlatform renderer window stdfont)
+          cb (SDLPlatform renderer window)
 
 instance Platform SDLPlatform where
   type PlatformImage SDLPlatform = SDLT.Texture
+  type PlatformFont SDLPlatform = TTFFont
   pollEvents _ = mapMaybe (^. fromSdlEvent) <$> unfoldM SDLE.pollEvent
-  {-
-  spriteDimensions p identifier =
-    case identifier `lookup` ( p ^. sdlpSurfaceMap ^. _1 )  of
-      Nothing -> error . T.unpack $ "Couldn't find image \"" <> identifier <> "\""
-      Just (_,rectangle) -> return rectangle
--}
+  loadFont _ fp fs = SDLTtf.openFont (fpToString fp) fs
   renderBegin _ = return ()
   renderClear p c = setRenderDrawColor (p ^. sdlpRenderer) c >> renderClear' (p ^. sdlpRenderer)
   renderFinish p = renderFinish' (p ^. sdlpRenderer)
   loadImage p fp = SDLImage.loadTexture (p ^. sdlpRenderer) (fpToString fp)
-  renderText p s c pos = do
-    texture <- createFontTexture (p ^. sdlpRenderer) (p ^. sdlpFont) s c
-    (width, height) <- SDLTtf.sizeText ( p ^. sdlpFont ) (T.unpack s)
+  renderText p font s c pos = do
+    texture <- createFontTexture (p ^. sdlpRenderer) font s c
+    (width, height) <- SDLTtf.sizeText font (T.unpack s)
     SDLR.renderCopy (p ^. sdlpRenderer) texture Nothing (Just $ SDLRect.Rect (pos ^. _x ^. floored) (pos ^. _y ^. floored) width height)
     destroyTexture texture
   viewportSize p = sizeToPoint <$> SDLV.getWindowSize (p ^. sdlpWindow)

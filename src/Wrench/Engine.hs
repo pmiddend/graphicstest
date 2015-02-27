@@ -1,7 +1,8 @@
+{-# LANGUAGE CPP                        #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE RankNTypes                 #-}
 {-# LANGUAGE TemplateHaskell            #-}
-{-# LANGUAGE CPP                        #-}
 module Wrench.Engine(
     Picture(..)
   , wrenchPlay
@@ -23,8 +24,8 @@ import           Wrench.Angular
 import           Wrench.Color
 import           Wrench.Event
 import           Wrench.FloatType          (FloatType)
-import           Wrench.Picture
 import           Wrench.ImageData
+import           Wrench.Picture
 import           Wrench.Platform
 import           Wrench.Point              (Point)
 import           Wrench.Rectangle          (rectangleDimensions,
@@ -35,8 +36,8 @@ import           Wrench.SGEPlatform
 #else
 import           Wrench.SDLPlatform
 #endif
+import           ClassyPrelude
 import           Wrench.Time
-import ClassyPrelude
 
 type ViewportSize = Point
 
@@ -66,6 +67,7 @@ mkScale p = V3 (V3 (p ^. _x) 0 0) (V3 0 (p ^. _y) 0) (V3 0 0 1)
 data RenderState p = RenderState { _rsTransformation :: M33 FloatType
                                  , _rsPlatform       :: p
                                  , _rsSurfaceData    :: SurfaceMap (PlatformImage p)
+                                 , _rsFont           :: PlatformFont p
                                  , _rsColor          :: Color
                                  , _rsRotation       :: Radians
                                  }
@@ -76,7 +78,7 @@ renderPicture :: Platform p => RenderState p -> Picture -> IO ()
 renderPicture rs p = case p of
   Blank -> return ()
   Line _ _ -> undefined
-  Text s -> renderText (rs ^. rsPlatform) (s) (rs ^. rsColor) (((rs ^. rsTransformation) !* V3 0 0 1) ^. toV2)
+  Text s -> renderText (rs ^. rsPlatform) (rs ^. rsFont) (s) (rs ^. rsColor) (((rs ^. rsTransformation) !* V3 0 0 1) ^. toV2)
   InColor color picture -> renderPicture (rs & rsColor .~ color) picture
   Pictures ps -> mapM_ (renderPicture rs) ps
   Translate point picture -> renderPicture (rs & rsTransformation %~ (!*! mkTranslation point)) picture
@@ -93,15 +95,16 @@ renderPicture rs p = case p of
         destRect = (rectangleFromPoints pos (pos + (srcRect ^. rectangleDimensions)))
     renderDrawSprite (rs ^. rsPlatform) image srcRect destRect rot
 
-wrenchRender :: Platform p => p -> SurfaceMap (PlatformImage p) -> Maybe BackgroundColor -> Picture -> IO ()
-wrenchRender platform surfaceMap backgroundColor outerPicture = do
+wrenchRender :: Platform p => p -> SurfaceMap (PlatformImage p) -> PlatformFont p -> Maybe BackgroundColor -> Picture -> IO ()
+wrenchRender platform surfaceMap font backgroundColor outerPicture = do
   renderBegin platform
   maybe (return ()) (renderClear platform) backgroundColor
-  renderPicture (RenderState eye3 platform surfaceMap (fromMaybe colorsWhite backgroundColor) 0) outerPicture
+  renderPicture (RenderState eye3 platform surfaceMap font (fromMaybe colorsWhite backgroundColor) 0) outerPicture
   renderFinish platform
 
 data MainLoopContext p world = MainLoopContext { _mlPlatform        :: p
                                                , _mlSurfaceData     :: SurfaceMap (PlatformImage p)
+                                               , _mlFont            :: PlatformFont p
                                                , _mlBackgroundColor :: Maybe BackgroundColor
                                                , _mlStepsPerSecond  :: StepsPerSecond
                                                , _mlWorldToPicture  :: ViewportSize -> world -> Picture
@@ -134,6 +137,7 @@ mainLoop context prevTime prevDelta world = do
     wrenchRender
         platform
         (context ^. mlSurfaceData)
+        (context ^. mlFont)
         (context ^. mlBackgroundColor)
         ((context ^. mlWorldToPicture) ws world)
     mainLoop context newTime newDelta newWorld
@@ -159,5 +163,6 @@ wrenchPlay :: Platform p =>
 wrenchPlay platform mediaPath backgroundColor initialWorld stepsPerSecond worldToPicture eventHandler simulationStep = do
   time <- getTicks
   surfaceData <- readMediaFiles (loadImage platform) mediaPath
-  let loopContext = MainLoopContext platform (fst surfaceData) backgroundColor stepsPerSecond worldToPicture eventHandler simulationStep
+  font <- loadFont platform (mediaPath </> "stdfont.ttf") 15
+  let loopContext = MainLoopContext platform (fst surfaceData) font backgroundColor stepsPerSecond worldToPicture eventHandler simulationStep
   mainLoop loopContext time 0 initialWorld
