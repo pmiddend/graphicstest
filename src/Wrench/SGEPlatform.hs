@@ -10,6 +10,7 @@ where
 import           ClassyPrelude
 import           Control.Lens ((^.), _2)
 import           Control.Lens.TH (makeLenses)
+import           Control.Monad.Trans.Resource (allocate, runResourceT)
 import qualified Data.Text as T ( unpack )
 import           GHC.Float ( double2Float )
 import           Linear.V2(_x, _y, V2(..))
@@ -20,7 +21,7 @@ import qualified SGE.Input ( KeyboardPtr, KeyboardKey(..), KeyState(..), withKey
 import qualified SGE.Renderer ( ContextPtr, DevicePtr, PlanarTexturePtr, beginRenderingExn, clear, destroyPlanarTexture, endRenderingAndDestroy, onscreenTarget, onscreenTargetDim, planarTextureFromPathExn )
 import qualified SGE.Sprite ( Object(..), draw )
 import qualified SGE.Systems ( InstancePtr, fontSystem, imageSystem, keyboard, renderer, windowSystem, with )
-import qualified SGE.Texture ( withPartRawRect )
+import qualified SGE.Texture ( destroyPart, partRawRectExn )
 import qualified SGE.Types ( Pos(..), Dim(..), Rect(..), dimW, dimH )
 import qualified SGE.Window ( SystemPtr, poll )
 import Wrench.Angular ( getRadians )
@@ -28,7 +29,7 @@ import Wrench.Color ( Color, colorAlpha, colorBlue, colorGreen, colorRed )
 import Wrench.Event ( Event(..) )
 import Wrench.KeyMovement ( KeyMovement(..) )
 import qualified Wrench.Keysym as Keysym ( Keysym(..) )
-import Wrench.Platform ( Platform(..), WindowTitle(..) )
+import Wrench.Platform ( Platform(..), WindowTitle(..), spriteDestRect, spriteImage, spriteRotation, spriteSrcRect, textColor, textContent, textFont, textPosition )
 import Wrench.Point ( Point )
 import Wrench.Rectangle ( Rectangle, rectLeftTop, rectangleDimensions )
 
@@ -285,16 +286,21 @@ instance Platform SGEPlatform where
                       context <- contextError p
                       SGE.Renderer.endRenderingAndDestroy (renderer p) context
                       >> writeIORef (p ^. sgepContext) Nothing
-         renderText p font text color pos = do
+         renderText p texts = do
                       context <- contextError p
-                      SGE.Font.draw (renderer p) context (font ^. _2) (unpack text) (toSGEPos pos) (toSGEColor color)
+                      mapM_ (\t -> SGE.Font.draw (renderer p) context (t ^. textFont ^. _2) (unpack (t ^. textContent)) (toSGEPos (t ^. textPosition)) (toSGEColor (t ^. textColor))) texts
          viewportSize p = do
                       dim <- SGE.Renderer.onscreenTargetDim (SGE.Renderer.onscreenTarget (renderer p))
                       return $ fromSGEDim dim
-         renderDrawSprite p image src dest rot = do
-                          context <- contextError p
-                          SGE.Texture.withPartRawRect image (toSGERect src) $ \part ->
-                                                      SGE.Sprite.draw (renderer p) context [SGE.Sprite.Object (toSGEPos (dest ^. rectLeftTop)) (toSGEDim (dest ^. rectangleDimensions)) (double2Float (rot ^. getRadians)) part]
+         renderSprites p sprites = runResourceT $ do
+                       context <- liftIO $ contextError p
+                       textures <- mapM allocTexture sprites
+                       liftIO $ SGE.Sprite.draw (renderer p) context (map translateSprite (zip sprites textures))
+                       where allocTexture s = allocate (SGE.Texture.partRawRectExn (s ^. spriteImage) (toSGERect (s ^. spriteSrcRect))) SGE.Texture.destroyPart
+                             translateSprite (s, (_, tex)) = SGE.Sprite.Object (toSGEPos (s ^. spriteDestRect ^. rectLeftTop))
+                                                                           (toSGEDim (s ^. spriteDestRect ^. rectangleDimensions))
+                                                                           (double2Float (s ^. spriteRotation ^. getRadians)) tex
+
 
 withSGEPlatform :: WindowTitle -> (SGEPlatform -> IO ()) -> IO ()
 withSGEPlatform windowTitle cb =

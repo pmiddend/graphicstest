@@ -64,6 +64,7 @@ library
                      , lifted-base
                      , classy-prelude
                      , system-filepath
+                     , resourcet
   if flag(sge)
     build-depends:     hsge
     cpp-options:       -DUSE_SGE
