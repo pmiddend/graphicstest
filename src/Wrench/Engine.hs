@@ -93,9 +93,23 @@ $(makeLenses ''RenderState)
 data RenderOperation image font = RenderOperationSprite (SpriteInstance image)
                                 | RenderOperationText (TextInstance font)
 
-executeOperation :: Platform p => p -> RenderOperation (PlatformImage p) (PlatformFont p) -> IO ()
-executeOperation p (RenderOperationSprite s) = renderSprites p [ s ]
-executeOperation p (RenderOperationText s) = renderText p [ s ]
+opToSprite :: RenderOperation image font -> SpriteInstance image
+opToSprite (RenderOperationSprite s) = s
+opToSprite (RenderOperationText _) = error "Cannot extract sprite from text"
+
+opToText :: RenderOperation image font -> TextInstance font
+opToText (RenderOperationSprite _) = error "Cannot extract text from sprite"
+opToText (RenderOperationText s) = s
+
+executeOperationBatch :: Platform p => p -> [ RenderOperation (PlatformImage p) (PlatformFont p) ] -> IO ()
+executeOperationBatch p ss@( (RenderOperationSprite _) : _ ) = renderSprites p (map opToSprite ss)
+executeOperationBatch p ss@( (RenderOperationText _) : _ ) = renderText p (map opToText ss)
+executeOperationBatch _ [] = return ()
+
+equalOperation :: RenderOperation image font -> RenderOperation image font -> Bool
+equalOperation (RenderOperationSprite _) (RenderOperationSprite _) = True
+equalOperation (RenderOperationText _) (RenderOperationText _) = True
+equalOperation _ _ = False
 
 renderPicture :: Platform p => RenderState p -> Picture -> IO [RenderOperation (PlatformImage p) (PlatformFont p)]
 renderPicture rs p = case p of
@@ -124,7 +138,7 @@ wrenchRender platform surfaceMap font backgroundColor outerPicture = do
   renderBegin platform
   maybe (return ()) (renderClear platform) backgroundColor
   operations <- renderPicture (RenderState eye3 platform surfaceMap font (fromMaybe colorsWhite backgroundColor) 0) outerPicture
-  mapM_ (executeOperation platform) operations
+  mapM_ (executeOperationBatch platform) (groupBy equalOperation operations)
   renderFinish platform
 
 data MainLoopContext p world = MainLoopContext { _mlPlatform        :: p
