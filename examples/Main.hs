@@ -1,11 +1,8 @@
 module Main where
 
-import           Control.Lens   (from, (^.))
 import           Linear.V2
-import           Wrench.Angular
 import           Wrench.Color
 import           Wrench.Engine
-import           Wrench.Time
 import           Wrench.Point
 import           Wrench.KeyMovement
 import           Wrench.Platform

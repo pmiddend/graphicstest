@@ -130,13 +130,13 @@ instance Platform SDLPlatform where
   renderFinish p = renderFinish' (p ^. sdlpRenderer)
   loadImage p fp = SDLImage.loadTexture (p ^. sdlpRenderer) (fpToString fp)
   freeImage _ texture = SDLR.destroyTexture texture
-  renderText p font s c pos = do
-    texture <- createFontTexture (p ^. sdlpRenderer) font s c
-    (width, height) <- SDLTtf.sizeText font (T.unpack s)
-    SDLR.renderCopy (p ^. sdlpRenderer) texture Nothing (Just $ SDLRect.Rect (pos ^. _x ^. floored) (pos ^. _y ^. floored) width height)
+  renderText p ts = forM_ ts $ \t -> do
+    texture <- createFontTexture (p ^. sdlpRenderer) (t ^. textFont) (t ^. textContent) (t ^. textColor)
+    (width, height) <- SDLTtf.sizeText (t ^. textFont) (T.unpack (t ^. textContent))
+    SDLR.renderCopy (p ^. sdlpRenderer) texture Nothing (Just $ SDLRect.Rect (t ^. textPosition ^. _x ^. floored) (t ^. textPosition ^. _y ^. floored) width height)
     destroyTexture texture
   viewportSize p = sizeToPoint <$> SDLV.getWindowSize (p ^. sdlpWindow)
-  renderDrawSprites p sprites =
+  renderSprites p sprites =
     forM_ sprites $ \sprite -> do
       let rot = sprite ^. spriteRotation ^. degrees
           rotCenter = Nothing

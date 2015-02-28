@@ -28,6 +28,7 @@ library
   hs-source-dirs:      src
   other-modules:       Wrench.Filesystem
                      , Wrench.Parsec
+                     , Wrench.List
   if flag(sge)
     other-modules:     Wrench.SGEPlatform
   exposed-modules:     Wrench.Angular

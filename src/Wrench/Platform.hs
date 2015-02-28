@@ -25,6 +25,15 @@ data SpriteInstance image = SpriteInstance {
 
 $(makeLenses ''SpriteInstance)
 
+data TextInstance font = TextInstance {
+    _textFont :: font
+  , _textContent :: T.Text
+  , _textColor :: Color
+  , _textPosition :: Point
+  }
+
+$(makeLenses ''TextInstance)
+
 class Platform p where
   type PlatformImage p :: *
   type PlatformFont p :: *
@@ -36,6 +45,6 @@ class Platform p where
   renderBegin :: p -> IO ()
   renderClear :: p -> Color -> IO ()
   renderFinish :: p -> IO ()
-  renderText :: p -> (PlatformFont p) -> T.Text -> Color -> Point -> IO ()
+  renderText :: p -> [TextInstance (PlatformFont p)] -> IO ()
   viewportSize :: p -> IO Point
-  renderDrawSprites :: p -> [SpriteInstance (PlatformImage p)] -> IO ()
+  renderSprites :: p -> [SpriteInstance (PlatformImage p)] -> IO ()
