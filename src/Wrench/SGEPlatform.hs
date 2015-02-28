@@ -12,7 +12,6 @@ import           Control.Lens ((^.), _2)
 import           Control.Lens.TH (makeLenses)
 import           Control.Monad.Trans.Resource (allocate, runResourceT)
 import qualified Data.Text as T ( unpack )
-import           GHC.Float ( double2Float )
 import           Linear.V2(_x, _y, V2(..))
 import qualified SGE.Font ( AddedPtr, ObjectPtr, SystemPtr, addFontExn, draw, createFontExn, destroyAdded, destroyFont )
 import qualified SGE.Image ( RGBA, makeRGBA )
@@ -299,7 +298,7 @@ instance Platform SGEPlatform where
                        where allocTexture s = snd <$> allocate (SGE.Texture.partRawRectExn (s ^. spriteImage) (toSGERect (s ^. spriteSrcRect))) SGE.Texture.destroyPart
                              translateSprite s tex = SGE.Sprite.Object (toSGEPos (s ^. spriteDestRect ^. rectLeftTop))
                                                                        (toSGEDim (s ^. spriteDestRect ^. rectangleDimensions))
-                                                                       (double2Float (s ^. spriteRotation ^. getRadians)) tex
+                                                                       (realToFrac (s ^. spriteRotation ^. getRadians)) tex
 
 
 withSGEPlatform :: WindowTitle -> (SGEPlatform -> IO ()) -> IO ()
