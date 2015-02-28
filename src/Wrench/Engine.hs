@@ -80,12 +80,11 @@ mkScale p = V3 (V3 (p ^. _x) 0 0) (V3 0 (p ^. _y) 0) (V3 0 0 1)
 -- mkTransformation :: FloatType -> Point -> M33 FloatType
 -- mkTransformation r p = mkTranslation p !*! mkRotation r
 
-data RenderState p = RenderState { _rsTransformation :: M33 FloatType
-                                 , _rsPlatform       :: p
-                                 , _rsSurfaceData    :: SurfaceMap (PlatformImage p)
-                                 , _rsFont           :: PlatformFont p
-                                 , _rsColor          :: Color
-                                 , _rsRotation       :: Radians
+data RenderState i f = RenderState { _rsTransformation :: M33 FloatType
+                                   , _rsSurfaceData    :: SurfaceMap i
+                                   , _rsFont           :: f
+                                   , _rsColor          :: Color
+                                   , _rsRotation       :: Radians
                                  }
 
 $(makeLenses ''RenderState)
@@ -111,7 +110,7 @@ equalOperation (RenderOperationSprite _) (RenderOperationSprite _) = True
 equalOperation (RenderOperationText _) (RenderOperationText _) = True
 equalOperation _ _ = False
 
-renderPicture :: Platform p => RenderState p -> Picture -> IO [RenderOperation (PlatformImage p) (PlatformFont p)]
+renderPicture :: RenderState font image -> Picture -> IO [RenderOperation font image]
 renderPicture rs p = case p of
   Blank -> return []
   Line _ _ -> undefined
@@ -137,7 +136,7 @@ wrenchRender :: Platform p => p -> SurfaceMap (PlatformImage p) -> PlatformFont 
 wrenchRender platform surfaceMap font backgroundColor outerPicture = do
   renderBegin platform
   maybe (return ()) (renderClear platform) backgroundColor
-  operations <- renderPicture (RenderState eye3 platform surfaceMap font (fromMaybe colorsWhite backgroundColor) 0) outerPicture
+  operations <- renderPicture (RenderState eye3 surfaceMap font (fromMaybe colorsWhite backgroundColor) 0) outerPicture
   mapM_ (executeOperationBatch platform) (groupBy equalOperation operations)
   renderFinish platform
 
