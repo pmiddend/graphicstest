@@ -7,6 +7,8 @@ module Wrench.SDLPlatform where
 import           ClassyPrelude             hiding (lookup)
 import           Control.Lens              ((^.))
 import           Control.Lens.Getter       (Getter, to)
+import           Control.Lens.Prism       (_Just)
+import Control.Lens.Review(re)
 import           Control.Lens.Iso          (Iso', from, iso)
 import           Control.Lens.TH           (makeLenses)
 import           Control.Monad.Loops       (unfoldM)
@@ -138,15 +140,14 @@ instance Platform SDLPlatform where
   viewportSize p = sizeToPoint <$> SDLV.getWindowSize (p ^. sdlpWindow)
   renderSprites p sprites =
     forM_ sprites $ \sprite -> do
-      let rot = sprite ^. spriteRotation ^. degrees
-          rotCenter = Nothing
+      let rotCenter = Nothing
           flipFlags = []
       SDLR.renderCopyEx
         (p ^. sdlpRenderer)
         (sprite ^. spriteImage)
-        (Just $ sprite ^. spriteSrcRect ^. from wrenchRect)
-        (Just $ sprite ^. spriteDestRect ^. from wrenchRect)
-        (rot ^. getDegrees)
+        (sprite ^. spriteSrcRect ^. from wrenchRect ^. re _Just)
+        (sprite ^. spriteDestRect ^. from wrenchRect ^. re _Just)
+        (sprite ^. spriteRotation ^. degrees ^. getDegrees)
         rotCenter
         flipFlags
 
