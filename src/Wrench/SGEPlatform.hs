@@ -295,11 +295,11 @@ instance Platform SGEPlatform where
          renderSprites p sprites = runResourceT $ do
                        context <- liftIO $ contextError p
                        textures <- mapM allocTexture sprites
-                       liftIO $ SGE.Sprite.draw (renderer p) context (map translateSprite (zip sprites textures))
+                       liftIO $ SGE.Sprite.draw (renderer p) context (zipWith translateSprite sprites textures)
                        where allocTexture s = allocate (SGE.Texture.partRawRectExn (s ^. spriteImage) (toSGERect (s ^. spriteSrcRect))) SGE.Texture.destroyPart
-                             translateSprite (s, (_, tex)) = SGE.Sprite.Object (toSGEPos (s ^. spriteDestRect ^. rectLeftTop))
-                                                                           (toSGEDim (s ^. spriteDestRect ^. rectangleDimensions))
-                                                                           (double2Float (s ^. spriteRotation ^. getRadians)) tex
+                             translateSprite s (_, tex) = SGE.Sprite.Object (toSGEPos (s ^. spriteDestRect ^. rectLeftTop))
+                                                                            (toSGEDim (s ^. spriteDestRect ^. rectangleDimensions))
+                                                                            (double2Float (s ^. spriteRotation ^. getRadians)) tex
 
 
 withSGEPlatform :: WindowTitle -> (SGEPlatform -> IO ()) -> IO ()
