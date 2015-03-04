@@ -16,6 +16,7 @@ module Wrench.Engine(
   , ToPictureHandler(..)
   , EventHandler(..)
   , TickHandler(..)
+  , ImageSizeGetter
   ) where
 
 import           Control.Lens              ((&), (^.))
@@ -34,6 +35,7 @@ import           Wrench.FloatType          (FloatType)
 import           Wrench.ImageData
 import           Wrench.Picture
 import           Wrench.Platform
+import Wrench.SpriteIdentifier
 import           Wrench.Point              (Point)
 import           Wrench.RenderPositionMode
 #if defined(USE_SGE)
@@ -46,9 +48,11 @@ import           Wrench.Time
 import Wrench.List(concatMapM)
 
 
+type ImageSizeGetter = SpriteIdentifier -> Rectangle
 newtype MediaPath = MediaPath { unpackMediaPath :: FilePath }
 newtype BackgroundColor = BackgroundColor { unpackBackgroundColor :: Maybe Color }
-newtype ToPictureHandler world = ToPictureHandler { unpackToPictureHandler :: (ViewportSize -> world -> Picture) }
+type ToPictureHandlerImpl world = ViewportSize -> world -> Picture
+newtype ToPictureHandler world = ToPictureHandler { unpackToPictureHandler :: (ImageSizeGetter -> ToPictureHandlerImpl world) }
 newtype EventHandler world = EventHandler { unpackEventHandler :: (Event -> world -> world) }
 newtype TickHandler world = TickHandler { unpackTickHandler :: (TimeDelta -> world -> world) }
 
@@ -201,6 +205,7 @@ wrenchPlay :: Platform p =>
 wrenchPlay platform mediaPath backgroundColor initialWorld stepsPerSecond worldToPicture eventHandler simulationStep = do
   time <- getTicks
   surfaceData <- readMediaFiles (loadImage platform) (unpackMediaPath mediaPath)
+  let imageSizeGetter spriteName = snd (fst surfaceData `findSurfaceUnsafe` spriteName)
   font <- loadFont platform ((unpackMediaPath mediaPath) </> "stdfont.ttf") 15
   let loopContext = MainLoopContext
                     platform
@@ -208,7 +213,7 @@ wrenchPlay platform mediaPath backgroundColor initialWorld stepsPerSecond worldT
                     font
                     (unpackBackgroundColor backgroundColor)
                     (unpackStepsPerSecond stepsPerSecond)
-                    (unpackToPictureHandler worldToPicture)
+                    ( (unpackToPictureHandler worldToPicture) imageSizeGetter )
                     (unpackEventHandler eventHandler)
                     (unpackTickHandler simulationStep)
   mainLoop loopContext time 0 initialWorld

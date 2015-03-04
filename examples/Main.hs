@@ -14,8 +14,8 @@ data World = World {
     carPosition :: Point
   }
 
-toPicture :: ViewportSize -> World -> Picture
-toPicture _ world = Translate (carPosition world) $ Sprite "car" RenderPositionCenter
+toPicture :: ImageSizeGetter -> ViewportSize -> World -> Picture
+toPicture _ _ world = Translate (carPosition world) $ Sprite "car" RenderPositionCenter
 
 initialWorld :: World
 initialWorld = World (V2 100 100)

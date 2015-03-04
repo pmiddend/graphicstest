@@ -50,8 +50,12 @@ data PlayingField g = PlayingField {
 
 $(makeLenses ''PlayingField)
 
-playingFieldToPicture :: ViewportSize -> PlayingField g -> Picture
-playingFieldToPicture = undefined
+playingFieldToPicture :: ImageSizeGetter -> ViewportSize -> PlayingField g -> Picture
+playingFieldToPicture imageSizes viewportSize p =
+  let (V2 sx sy) = p ^. pfSize
+      tilePositions = [[0..sx] | x <- [0..sy]]
+      tiles = mapMaybe (p ^. pfTiles)
+  in undefined
 
 gameOver :: PlayingField g -> Bool
 gameOver p = let currentTetro = tetrominoToTiles ( p ^. pfCurrentTetromino )
@@ -69,15 +73,14 @@ eventHandler event world = world `orSafe` case event of
   Keyboard{keyMovement=KeyDown, keySym=Key.Down} -> world & pfCurrentTetromino . tiRotationCount +~ 3
   _ -> world
 
-toPicture :: ViewportSize -> World -> Picture
-toPicture _ world = Translate (carPosition world) $ Sprite "car" RenderPositionCenter
+--toPicture :: ImageSizeGetter -> ViewportSize -> World -> Picture
+toPicture imageSize viewportSize world = undefined
 
-initialWorld :: World
-initialWorld = World (V2 100 100)
+initialWorld = undefined 
 
 main :: IO ()
-main = do
-  withPlatform (WindowTitle "wrenchtris") $ \p -> do
+main =
+  withPlatform (WindowTitle "wrenchtris") $ \p ->
     wrenchPlay
         p
         (MediaPath "media")
