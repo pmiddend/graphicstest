@@ -15,7 +15,6 @@ module Wrench.Engine(
   , StepsPerSecond(..)
   , ToPictureHandler(..)
   , EventHandler(..)
-  , TickHandler(..)
   , ImageSizeGetter
   ) where
 
@@ -52,9 +51,8 @@ type ImageSizeGetter = SpriteIdentifier -> Rectangle
 newtype MediaPath = MediaPath { unpackMediaPath :: FilePath }
 newtype BackgroundColor = BackgroundColor { unpackBackgroundColor :: Maybe Color }
 type ToPictureHandlerImpl world = ViewportSize -> world -> Picture
-newtype ToPictureHandler world = ToPictureHandler { unpackToPictureHandler :: (ImageSizeGetter -> ToPictureHandlerImpl world) }
-newtype EventHandler world = EventHandler { unpackEventHandler :: (Event -> world -> world) }
-newtype TickHandler world = TickHandler { unpackTickHandler :: (TimeDelta -> world -> world) }
+newtype ToPictureHandler world = ToPictureHandler { unpackToPictureHandler :: ImageSizeGetter -> ToPictureHandlerImpl world }
+newtype EventHandler world = EventHandler { unpackEventHandler :: Event -> world -> world }
 
 noBackgroundColor :: BackgroundColor
 noBackgroundColor = BackgroundColor Nothing
@@ -105,8 +103,8 @@ opToText (RenderOperationSprite _) = error "Cannot extract text from sprite"
 opToText (RenderOperationText s) = s
 
 executeOperationBatch :: Platform p => p -> [ RenderOperation (PlatformImage p) (PlatformFont p) ] -> IO ()
-executeOperationBatch p ss@( (RenderOperationSprite _) : _ ) = renderSprites p (map opToSprite ss)
-executeOperationBatch p ss@( (RenderOperationText _) : _ ) = renderText p (map opToText ss)
+executeOperationBatch p ss@( RenderOperationSprite _ : _ ) = renderSprites p (map opToSprite ss)
+executeOperationBatch p ss@( RenderOperationText _ : _ ) = renderText p (map opToText ss)
 executeOperationBatch _ [] = return ()
 
 equalOperation :: RenderOperation image font -> RenderOperation image font -> Bool
@@ -133,7 +131,7 @@ renderPicture rs p = case p of
           RenderPositionCenter -> origin - (srcRect ^. rectangleDimensions ^. dividing 2)
           RenderPositionTopLeft -> origin
         rot = rs ^. rsRotation
-        destRect = (rectangleFromPoints pos (pos + (srcRect ^. rectangleDimensions)))
+        destRect = rectangleFromPoints pos (pos + (srcRect ^. rectangleDimensions))
     return [RenderOperationSprite (SpriteInstance image srcRect destRect rot)]
 
 wrenchRender :: Platform p => p -> SurfaceMap (PlatformImage p) -> PlatformFont p -> Maybe Color -> Picture -> IO ()
@@ -151,7 +149,6 @@ data MainLoopContext p world = MainLoopContext { _mlPlatform        :: p
                                                , _mlStepsPerSecond  :: Int
                                                , _mlWorldToPicture  :: ViewportSize -> world -> Picture
                                                , _mlEventHandler    :: Event -> world -> world
-                                               , _mlSimulationStep  :: TimeDelta -> world -> world
                                                }
 
 
@@ -169,12 +166,13 @@ mainLoop context prevTime prevDelta world = do
   let platform = context ^. mlPlatform
   mappedEvents <- pollEvents platform
   unless (any isQuitEvent mappedEvents) $ do
-    let worldAfterEvents = foldr (context ^. mlEventHandler) world mappedEvents
     newTime <- getTicks
     let timeDelta = newTime `tickDelta` prevTime
         maxDelta = fromSeconds . recip . fromIntegral $ context ^. mlStepsPerSecond
         (simulationSteps,newDelta) = splitDelta maxDelta (timeDelta + prevDelta)
-    let newWorld = foldr (context ^. mlSimulationStep) worldAfterEvents (replicate simulationSteps maxDelta :: [TimeDelta])
+    let newWorld = foldr (context ^. mlEventHandler) world (mappedEvents <> replicate simulationSteps (Tick maxDelta))
+    -- TODO: Delete if finished
+    --let newWorld = foldr (context ^. mlSimulationStep) worldAfterEvents (replicate simulationSteps maxDelta :: [TimeDelta])
     ws <- viewportSize platform
     wrenchRender
         platform
@@ -200,20 +198,18 @@ wrenchPlay :: Platform p =>
               StepsPerSecond ->
               ToPictureHandler world ->
               EventHandler world ->
-              TickHandler world ->
               IO ()
-wrenchPlay platform mediaPath backgroundColor initialWorld stepsPerSecond worldToPicture eventHandler simulationStep = do
+wrenchPlay platform mediaPath backgroundColor initialWorld stepsPerSecond worldToPicture eventHandler = do
   time <- getTicks
   surfaceData <- readMediaFiles (loadImage platform) (unpackMediaPath mediaPath)
   let imageSizeGetter spriteName = snd (fst surfaceData `findSurfaceUnsafe` spriteName)
-  font <- loadFont platform ((unpackMediaPath mediaPath) </> "stdfont.ttf") 15
+  font <- loadFont platform (unpackMediaPath mediaPath </> "stdfont.ttf") 15
   let loopContext = MainLoopContext
                     platform
                     (fst surfaceData)
                     font
                     (unpackBackgroundColor backgroundColor)
                     (unpackStepsPerSecond stepsPerSecond)
-                    ( (unpackToPictureHandler worldToPicture) imageSizeGetter )
+                    (unpackToPictureHandler worldToPicture imageSizeGetter)
                     (unpackEventHandler eventHandler)
-                    (unpackTickHandler simulationStep)
   mainLoop loopContext time 0 initialWorld

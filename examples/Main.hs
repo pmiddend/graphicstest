@@ -22,16 +22,16 @@ initialWorld = World (V2 100 100)
 
 eventHandler :: Event -> World -> World
 eventHandler event world = case event of
-  Keyboard{keyMovement=KeyDown, keySym=Key.Left} -> World (carPosition world ^+^ (V2 (-10) 0))
-  Keyboard{keyMovement=KeyDown, keySym=Key.Right} -> World (carPosition world ^+^ (V2 (10) 0))
-  Keyboard{keyMovement=KeyDown, keySym=Key.Up} -> World (carPosition world ^+^ (V2 0 (-10)))
-  Keyboard{keyMovement=KeyDown, keySym=Key.Down} -> World (carPosition world ^+^ (V2 0 (10)))
+  Keyboard{keyMovement=KeyDown, keySym=Key.Left} -> World (carPosition world ^+^ V2 (-10) 0)
+  Keyboard{keyMovement=KeyDown, keySym=Key.Right} -> World (carPosition world ^+^ V2 10 0)
+  Keyboard{keyMovement=KeyDown, keySym=Key.Up} -> World (carPosition world ^+^ V2 0 (-10))
+  Keyboard{keyMovement=KeyDown, keySym=Key.Down} -> World (carPosition world ^+^ V2 0 10)
   _ -> world
 
 
 main :: IO ()
-main = do
-  withPlatform (WindowTitle "window title") $ \p -> do
+main =
+  withPlatform (WindowTitle "window title") $ \p ->
     wrenchPlay
         p
         (MediaPath "media")
@@ -40,4 +40,3 @@ main = do
         (StepsPerSecond 1)
         (ToPictureHandler toPicture)
         (EventHandler eventHandler)
-        (TickHandler (\_ w -> w))
