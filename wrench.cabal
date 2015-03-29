@@ -46,7 +46,7 @@ library
                      , Wrench.RenderPositionMode
                      , Wrench.KeyMovement
                      , Wrench.Event
-  build-depends:       base >=4.7 && <4.8
+  build-depends:       base >=4.7 && <4.9
                      , linear
                      , lens
                      , SDL2 == 0.1.0
@@ -78,7 +78,7 @@ executable example_main
   main-is:             Main.hs
   hs-source-dirs:      examples
   -- other-extensions:
-  build-depends:       base >=4.7 && <4.8
+  build-depends:       base >=4.7 && <4.9
                      , wrench
                      , lens
                      , linear
