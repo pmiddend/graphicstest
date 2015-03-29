@@ -22,7 +22,7 @@ import           Control.Lens              ((&), (^.))
 import           Control.Lens.Getter       (Getter, to)
 import           Control.Lens.Setter       ((%~), (+~), (.~))
 import           Control.Lens.TH           (makeLenses)
-import           Linear.Matrix             (M33, eye3, (!*), (!*!))
+import           Linear.Matrix             (M33, (!*), (!*!))
 import           Linear.V2                 (V2 (..), _x, _y)
 import           Linear.V3                 (V3 (..))
 import           Numeric.Lens              (dividing)
@@ -46,6 +46,9 @@ import           ClassyPrelude
 import           Wrench.Time
 import Wrench.List(concatMapM)
 
+-- TODO: Use Linear.Matrix.identity
+eye3 :: Num a => M33 a
+eye3 = V3 (V3 1 0 0) (V3 0 1 0) (V3 0 0 1)
 
 type ImageSizeGetter = SpriteIdentifier -> Rectangle
 newtype MediaPath = MediaPath { unpackMediaPath :: FilePath }
