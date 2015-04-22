@@ -33,4 +33,4 @@ toSeconds (TimeDelta t) = t
 getTicks :: IO TimeTicks
 getTicks = do
   (TimeSpec s ns) <- getTime Monotonic
-  return $ tickSeconds s + tickNanoSeconds ns
+  return $ tickSeconds s + tickNanoSeconds (fromIntegral ns)
