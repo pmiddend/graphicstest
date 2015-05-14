@@ -16,8 +16,6 @@ module Wrench.Engine(
   , ToPictureHandler(..)
   , EventHandler(..)
   , ImageSizeGetter
-  , dynamicWindowSize
-  , constantWindowSize
   ) where
 
 import           Control.Lens              ((&), (^.))
