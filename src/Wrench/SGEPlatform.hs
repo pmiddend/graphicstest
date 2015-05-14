@@ -28,7 +28,7 @@ import Wrench.Color ( Color, colorAlpha, colorBlue, colorGreen, colorRed )
 import Wrench.Event ( Event(..) )
 import Wrench.KeyMovement ( KeyMovement(..) )
 import qualified Wrench.Keysym as Keysym ( Keysym(..) )
-import Wrench.Platform ( Platform(..), WindowTitle(..), spriteDestRect, spriteImage, spriteRotation, spriteSrcRect, textColor, textContent, textFont, textPosition )
+import Wrench.Platform ( Platform(..), WindowSize, WindowTitle(..), spriteDestRect, spriteImage, spriteRotation, spriteSrcRect, textColor, textContent, textFont, textPosition )
 import Wrench.Point ( Point )
 import Wrench.Rectangle ( Rectangle, rectLeftTop, rectangleDimensions )
 
@@ -301,8 +301,8 @@ instance Platform SGEPlatform where
                                                                        (realToFrac (s ^. spriteRotation ^. getRadians)) tex
 
 
-withSGEPlatform :: WindowTitle -> (SGEPlatform -> IO ()) -> IO ()
-withSGEPlatform windowTitle cb =
+withSGEPlatform :: WindowTitle -> WindowSize -> (SGEPlatform -> IO ()) -> IO ()
+withSGEPlatform windowTitle _ cb =
                 SGE.Systems.with (T.unpack (unpackWindowTitle windowTitle)) $ \system -> do
                                  context <- newIORef Nothing
                                  cb (SGEPlatform system context)

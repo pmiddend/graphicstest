@@ -113,12 +113,15 @@ withRenderer window callback =
 sizeToPoint :: SDLT.Size -> Point
 sizeToPoint (SDLT.Size w h) = V2 (fromIntegral w) (fromIntegral h)
 
-withSDLPlatform :: WindowTitle -> (SDLPlatform -> IO ()) -> IO ()
-withSDLPlatform windowTitle cb =
+withSDLPlatform :: WindowTitle -> WindowSize -> (SDLPlatform -> IO ()) -> IO ()
+withSDLPlatform windowTitle windowSize cb =
   withFontInit $
     withImgInit $
       withWindow (unpackWindowTitle windowTitle) $ \window -> do
         withRenderer window $ \renderer -> do
+          case windowSize of
+            DynamicWindowSize -> return ()
+            ConstantWindowSize w h -> SDLR.renderSetLogicalSize renderer w h
           cb (SDLPlatform renderer window)
 
 instance Platform SDLPlatform where
