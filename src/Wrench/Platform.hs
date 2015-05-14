@@ -1,5 +1,6 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Wrench.Platform where
 
 import           ClassyPrelude
@@ -11,7 +12,7 @@ import           Wrench.Point
 import           Wrench.Rectangle
 import Control.Lens.TH
 
-newtype WindowTitle = WindowTitle { unpackWindowTitle :: T.Text }
+newtype WindowTitle = WindowTitle { unpackWindowTitle :: T.Text } deriving(IsString)
 type SrcRect = Rectangle
 type DestRect = Rectangle
 type FontSize = Int
