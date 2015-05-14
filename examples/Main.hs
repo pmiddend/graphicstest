@@ -31,7 +31,7 @@ eventHandler event world = case event of
 
 main :: IO ()
 main =
-  withPlatform (WindowTitle "window title") $ \p ->
+  withPlatform (WindowTitle "window title") DynamicWindowSize $ \p ->
     wrenchPlay
         p
         (MediaPath "media")
