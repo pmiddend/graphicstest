@@ -4,7 +4,8 @@
 {-# LANGUAGE TypeFamilies               #-}
 module Wrench.SDLPlatform where
 
-import           ClassyPrelude             hiding (lookup)
+import           ClassyPrelude             hiding (lookup,FilePath,(</>))
+import System.FilePath
 import           Control.Lens              ((^.))
 import           Control.Lens.Getter       (Getter, to)
 import           Control.Lens.Prism       (_Just)
@@ -128,12 +129,12 @@ instance Platform SDLPlatform where
   type PlatformImage SDLPlatform = SDLT.Texture
   type PlatformFont SDLPlatform = TTFFont
   pollEvents _ = mapMaybe (^. fromSdlEvent) <$> unfoldM SDLE.pollEvent
-  loadFont _ fp fs = SDLTtf.openFont (fpToString fp) fs
+  loadFont _ fp fs = SDLTtf.openFont fp fs
   freeFont _ _ = return ()
   renderBegin _ = return ()
   renderClear p c = setRenderDrawColor (p ^. sdlpRenderer) c >> renderClear' (p ^. sdlpRenderer)
   renderFinish p = renderFinish' (p ^. sdlpRenderer)
-  loadImage p fp = SDLImage.loadTexture (p ^. sdlpRenderer) (fpToString fp)
+  loadImage p fp = SDLImage.loadTexture (p ^. sdlpRenderer) fp
   freeImage _ texture = SDLR.destroyTexture texture
   renderText p ts = forM_ ts $ \t -> do
     texture <- createFontTexture (p ^. sdlpRenderer) (t ^. textFont) (t ^. textContent) (t ^. textColor)

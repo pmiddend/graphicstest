@@ -42,7 +42,8 @@ import           Wrench.SGEPlatform
 #else
 import           Wrench.SDLPlatform
 #endif
-import           ClassyPrelude
+import           ClassyPrelude hiding(FilePath,(</>))
+import System.FilePath
 import           Wrench.Time
 import Wrench.List(concatMapM)
 

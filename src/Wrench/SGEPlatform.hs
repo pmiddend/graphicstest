@@ -7,7 +7,8 @@ module Wrench.SGEPlatform(
 )
 where
 
-import           ClassyPrelude
+import           ClassyPrelude hiding(FilePath,(</>))
+import System.FilePath
 import           Control.Lens ((^.), _2)
 import           Control.Lens.TH (makeLenses)
 import           Control.Monad.Trans.Resource (allocate, runResourceT)

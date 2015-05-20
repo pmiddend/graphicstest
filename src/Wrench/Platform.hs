@@ -3,7 +3,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Wrench.Platform where
 
-import           ClassyPrelude
+import           ClassyPrelude hiding(FilePath,(</>))
 import qualified Data.Text        as T
 import           Wrench.Angular
 import           Wrench.Color
@@ -11,6 +11,7 @@ import           Wrench.Event
 import           Wrench.Point
 import           Wrench.Rectangle
 import Control.Lens.TH
+import System.FilePath
 
 newtype WindowTitle = WindowTitle { unpackWindowTitle :: T.Text } deriving(IsString)
 data WindowSize = DynamicWindowSize | ConstantWindowSize Int Int

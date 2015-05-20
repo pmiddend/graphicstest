@@ -20,9 +20,9 @@ import           Linear.V2                 (V2 (..))
 import           Text.Parsec               (many1)
 import           Text.Parsec.Char          (char, noneOf)
 import           Text.Parsec.Combinator    (eof, sepEndBy1)
-import           ClassyPrelude
+import           ClassyPrelude hiding(FilePath,(</>))
 import qualified Data.Text as T
-import           Filesystem.Path.CurrentOS
+import System.FilePath
 import           Text.Parsec.Prim          (ParsecT, Stream)
 import           Wrench.Filesystem
 import           Wrench.Parsec
@@ -57,7 +57,7 @@ findSurfaceUnsafe sm im = fromMaybe (error $ "Cannot find image \"" <> T.unpack 
 
 -- Holt alle "Descriptorfiles" (also die mit .txt enden) aus dem Directory
 getDescFilesInDir :: MonadIO m => FilePath -> m [ImageDescFile]
-getDescFilesInDir dir = liftIO $ filter (extension >>> (== Just "txt")) <$> getFilesInDir dir
+getDescFilesInDir dir = liftIO $ filter (takeExtension >>> (== "txt")) <$> getFilesInDir dir
 
 readMediaFiles :: forall a m.(Applicative m, MonadIO m) => ImageLoadFunction m a -> FilePath -> m (SurfaceMap a,AnimMap)
 readMediaFiles loadImage fp = (,) <$> (foldr M.union M.empty <$> smaps) <*> (foldr M.union M.empty <$> amaps)
@@ -90,7 +90,7 @@ toSurfaceMap :: a -> ImageMap -> SurfaceMap a
 toSurfaceMap s = ((s,) <$>)
 
 readImageData :: MonadIO m => FilePath -> m [DataLine]
-readImageData fp = liftIO $ safeParseFromFile imageDataC (fpToString fp)
+readImageData fp = liftIO $ safeParseFromFile imageDataC fp
 
 imageDataC :: Stream s m Char => ParsecT s u m [DataLine]
 imageDataC = sepEndBy1 imageDataLineC (char '\n') <* eof

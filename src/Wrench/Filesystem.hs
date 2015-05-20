@@ -2,14 +2,15 @@ module Wrench.Filesystem(
   getFilesInDir
   ) where
 
-import           ClassyPrelude
+import           ClassyPrelude hiding(FilePath,(</>))
 import           System.Directory (doesFileExist, getDirectoryContents)
+import System.FilePath
 
 getDirectoryContentsWrapped :: FilePath -> IO [FilePath]
-getDirectoryContentsWrapped fp = (fpFromString <$>) <$> (getDirectoryContents (fpToString fp))
+getDirectoryContentsWrapped fp = getDirectoryContents fp
 
 doesFileExistWrapped :: FilePath -> IO Bool
-doesFileExistWrapped = doesFileExist . fpToString
+doesFileExistWrapped = doesFileExist
 
 -- Holt nur die Files (ohne . und ..) aus einem Verzeichnis
 getFilesInDir :: FilePath -> IO [FilePath]

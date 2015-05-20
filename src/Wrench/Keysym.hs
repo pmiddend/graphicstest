@@ -236,5 +236,5 @@ data Keysym
   | DoubleQuote
   | RightParen
   | Underscore
-  deriving (Eq, Show)
+  deriving (Eq, Show,Ord)
 

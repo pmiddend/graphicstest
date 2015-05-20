@@ -57,7 +57,7 @@ library
                      , mtl
                      , lifted-base
                      , classy-prelude
-                     , system-filepath
+                     , filepath
                      , resourcet
   if flag(sge)
     build-depends:     hsge
