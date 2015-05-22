@@ -14,4 +14,6 @@ doesFileExistWrapped = doesFileExist
 
 -- Holt nur die Files (ohne . und ..) aus einem Verzeichnis
 getFilesInDir :: FilePath -> IO [FilePath]
-getFilesInDir dir = getDirectoryContentsWrapped dir >>= (return . map (dir </>)) >>= filterM doesFileExistWrapped
+getFilesInDir dir = do
+  result <- getDirectoryContentsWrapped dir >>= (return . map (dir </>)) >>= filterM doesFileExistWrapped
+  return result

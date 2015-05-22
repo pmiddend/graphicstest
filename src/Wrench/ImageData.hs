@@ -53,11 +53,11 @@ type AnimMap = Map AnimId Animation
 type ImageLoadFunction m a = FilePath -> m a
 
 findSurfaceUnsafe :: SurfaceMap a -> ImageId -> SurfaceData a
-findSurfaceUnsafe sm im = fromMaybe (error $ "Cannot find image \"" <> T.unpack im <> "\"") (im `M.lookup` sm)
+findSurfaceUnsafe sm im = fromMaybe (error $ "Cannot find image \"" <> T.unpack im <> "\" in " <> (show (keys sm))) (im `M.lookup` sm)
 
 -- Holt alle "Descriptorfiles" (also die mit .txt enden) aus dem Directory
 getDescFilesInDir :: MonadIO m => FilePath -> m [ImageDescFile]
-getDescFilesInDir dir = liftIO $ filter (takeExtension >>> (== "txt")) <$> getFilesInDir dir
+getDescFilesInDir dir = liftIO $ filter (takeExtension >>> (== ".txt")) <$> getFilesInDir dir
 
 readMediaFiles :: forall a m.(Applicative m, MonadIO m) => ImageLoadFunction m a -> FilePath -> m (SurfaceMap a,AnimMap)
 readMediaFiles loadImage fp = (,) <$> (foldr M.union M.empty <$> smaps) <*> (foldr M.union M.empty <$> amaps)
