@@ -44,6 +44,9 @@ library
                      , Wrench.Event
                      , Wrench.ImageParser
                      , Wrench.Animation
+                     , Wrench.AnimMap
+                     , Wrench.AnimId
+                     , Wrench.ImageId
   build-depends:       base >=4.7 && <4.9
                      , linear
                      , lens
