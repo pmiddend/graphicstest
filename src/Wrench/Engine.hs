@@ -12,6 +12,7 @@ module Wrench.Engine(
   , MediaPath(..)
   , BackgroundColor(..)
   , noBackgroundColor
+  , wrenchRender
   , StepsPerSecond(..)
   , ToPictureHandler(..)
   , EventHandler(..)
