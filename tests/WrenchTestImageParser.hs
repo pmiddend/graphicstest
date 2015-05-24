@@ -17,4 +17,4 @@ wrenchTestImageParserImage :: Test
 wrenchTestImageParserImage = TestCase (readImageDataFromText ("car=0,1,30,60\nfoo=1,2,3,4") @?= [DataLineImage ("car",rectangleFromPoints (V2 0 1) (V2 30 60)),DataLineImage ("foo",rectangleFromPoints (V2 1 2) (V2 3 4))])
 
 wrenchTestImageParserAnims :: Test
-wrenchTestImageParserAnims = TestCase (readImageDataFromText ">player_walk=250|pwr0,pwr1" @?= [DataLineAnim ("player_walk",Animation 250 ["pwr0","pwr1"])])
+wrenchTestImageParserAnims = TestCase (readImageDataFromText ">player_walk=250|pwr0,pwr1\n>player_stand=250|pwr0,pwr1" @?= [DataLineAnim ("player_walk",Animation 250 ["pwr0","pwr1"]),DataLineAnim ("player_stand",Animation 250 ["pwr0","pwr1"])])

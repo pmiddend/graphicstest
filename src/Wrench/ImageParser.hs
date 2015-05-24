@@ -63,4 +63,4 @@ imageDataLineImageC :: Parser (ImageId,Rectangle)
 imageDataLineImageC = (,) <$> stringNotInClass "=\n" <*> (char '=' *> rectangle)
 
 imageDataLineAnimC :: Parser (AnimId,Animation)
-imageDataLineAnimC = (,) <$> stringNotInClass "=\n" <*> (Animation <$> (char '=' *> scientificBoundedInt <* char '|') <*> sepBy1 (stringNotInClass  ",") (char ','))
+imageDataLineAnimC = (,) <$> stringNotInClass "=\n" <*> (Animation <$> (char '=' *> scientificBoundedInt <* char '|') <*> sepBy1 (stringNotInClass  ",\n") (char ','))
