@@ -27,7 +27,6 @@ flag sge
 library
   hs-source-dirs:      src
   other-modules:       Wrench.Filesystem
-                     , Wrench.Parsec
                      , Wrench.List
   exposed-modules:     Wrench.Angular
                      , Wrench.Color
@@ -50,16 +49,16 @@ library
                      , lens
                      , containers
                      , text
-                     , parsec
+                     , attoparsec
                      , filepath
                      , directory
                      , monad-loops
                      , clock
                      , transformers
+                     , scientific
                      , mtl
                      , lifted-base
                      , classy-prelude
-                     , filepath
                      , resourcet
   if flag(sge)
     build-depends:     hsge
