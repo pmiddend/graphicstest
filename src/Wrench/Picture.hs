@@ -1,25 +1,46 @@
-module Wrench.Picture where
+module Wrench.Picture(Picture,pictureLine,pictureText,pictureSprite,pictureSpriteResampled,pictureBlank,pictureInColor,pictureTranslated,pictureRotated,pictures,pictureScaled,pictureSpriteCentered,pictureSpriteTopLeft) where
 
-import Data.Monoid
+import Wrench.Internal.Picture
 import Wrench.Point
-import Wrench.SpriteIdentifier
-import Wrench.RenderPositionMode
 import Wrench.Color
+import Wrench.SpriteIdentifier
 import Wrench.Angular
-import qualified Data.Text as T
+import Wrench.RenderPositionMode
 import ClassyPrelude
 
-data Picture = Line Point Point
-             | Text T.Text
-             | Sprite SpriteIdentifier RenderPositionMode
-             | Blank
-             | InColor Color Picture
-             | Translate Point Picture
-             | Rotate Radians Picture
-             | Scale Point Picture
-             | Pictures [Picture]
-             deriving(Show,Eq)
+pictureLine :: Point -> Point -> Picture
+pictureLine = Line
 
-instance Monoid Picture where
-  mempty = Blank
-  mappend a b = Pictures [a,b]
+pictureText :: Text -> Picture
+pictureText = Text
+
+pictureSpriteResampled :: SpriteIdentifier -> RenderPositionMode -> Point -> Picture
+pictureSpriteResampled identifier positionMode newSize = Sprite identifier positionMode (Just newSize)
+
+pictureSprite :: SpriteIdentifier -> RenderPositionMode -> Picture
+pictureSprite identifier positionMode = Sprite identifier positionMode Nothing
+
+pictureSpriteCentered :: SpriteIdentifier -> Picture
+pictureSpriteCentered identifier = Sprite identifier RenderPositionCenter Nothing
+
+pictureSpriteTopLeft :: SpriteIdentifier -> Picture
+pictureSpriteTopLeft identifier = Sprite identifier RenderPositionTopLeft Nothing
+
+pictureBlank :: Picture
+pictureBlank = Blank
+
+pictureInColor :: Color -> Picture -> Picture
+pictureInColor = InColor
+
+pictureTranslated :: Point -> Picture -> Picture
+pictureTranslated = Translate
+
+pictureRotated :: Radians -> Picture -> Picture
+pictureRotated = Rotate
+
+pictureScaled :: Point -> Picture -> Picture
+pictureScaled = Scale
+
+pictures :: [Picture] -> Picture
+pictures = Pictures
+

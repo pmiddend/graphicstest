@@ -3,6 +3,7 @@ module Main where
 import           Linear.V2
 import           Wrench.Color
 import           Wrench.Engine
+import           Wrench.Picture
 import           Wrench.Point
 import           Wrench.KeyMovement
 import           Wrench.Platform
@@ -15,7 +16,7 @@ data World = World {
   }
 
 toPicture :: ImageSizeGetter -> ViewportSize -> World -> Picture
-toPicture _ _ world = Translate (carPosition world) $ Sprite "car" RenderPositionCenter
+toPicture _ _ world = (carPosition world) `pictureTranslated` (pictureSpriteCentered "car")
 
 initialWorld :: World
 initialWorld = World (V2 100 100)

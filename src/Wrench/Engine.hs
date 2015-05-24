@@ -3,20 +3,18 @@
 {-# LANGUAGE RankNTypes                 #-}
 {-# LANGUAGE TemplateHaskell            #-}
 module Wrench.Engine(
-    Picture(..)
-  , wrenchPlay
-  , RenderPositionMode(..)
+    wrenchPlay
   , Event(..)
   , ViewportSize
   , withPlatform
   , MediaPath(..)
   , BackgroundColor(..)
   , noBackgroundColor
-  , wrenchRender
   , StepsPerSecond(..)
   , ToPictureHandler(..)
   , EventHandler(..)
   , ImageSizeGetter
+  , wrenchRender
   ) where
 
 import           Control.Lens              ((&), (^.))
@@ -33,7 +31,7 @@ import           Wrench.Event
 import           Wrench.Rectangle
 import           Wrench.FloatType          (FloatType)
 import           Wrench.ImageData
-import           Wrench.Picture
+import           Wrench.Internal.Picture
 import           Wrench.Platform
 import Wrench.SpriteIdentifier
 import           Wrench.Point              (Point)
@@ -120,7 +118,7 @@ equalOperation _ _ = False
 renderPicture :: RenderState font image -> Picture -> IO [RenderOperation font image]
 renderPicture rs p = case p of
   Blank -> return []
-  Line _ _ -> undefined
+  Line _ _ -> return [] -- TODO
   --Text s -> renderText (rs ^. rsPlatform) (rs ^. rsFont) (s) (rs ^. rsColor) (((rs ^. rsTransformation) !* V3 0 0 1) ^. toV2)
   Text s -> return [RenderOperationText (TextInstance (rs ^. rsFont) s (rs ^. rsColor) (((rs ^. rsTransformation) !* V3 0 0 1) ^. toV2) )]
   InColor color picture -> renderPicture (rs & rsColor .~ color) picture
@@ -128,15 +126,16 @@ renderPicture rs p = case p of
   Translate point picture -> renderPicture (rs & rsTransformation %~ (!*! mkTranslation point)) picture
   Rotate r picture -> renderPicture (rs & ((rsRotation +~ r) . (rsTransformation %~ (!*! mkRotation (r ^. getRadians))))) picture
   Scale s picture -> renderPicture (rs & rsTransformation %~ (!*! mkScale s)) picture
-  Sprite identifier positionMode -> do
+  Sprite identifier positionMode resampledSize -> do
     let (image,srcRect) = findSurfaceUnsafe (rs ^. rsSurfaceData) identifier
         m = rs ^. rsTransformation
         origin = (m !* V3 0 0 1) ^. toV2
+        spriteDim = fromMaybe (srcRect ^. rectangleDimensions) resampledSize
         pos = case positionMode of
-          RenderPositionCenter -> origin - (srcRect ^. rectangleDimensions ^. dividing 2)
+          RenderPositionCenter -> origin - (spriteDim ^. dividing 2)
           RenderPositionTopLeft -> origin
         rot = rs ^. rsRotation
-        destRect = rectangleFromPoints pos (pos + (srcRect ^. rectangleDimensions))
+        destRect = rectangleFromPoints pos (pos + spriteDim)
     return [RenderOperationSprite (SpriteInstance image srcRect destRect rot)]
 
 wrenchRender :: Platform p => p -> SurfaceMap (PlatformImage p) -> PlatformFont p -> Maybe Color -> Picture -> IO ()

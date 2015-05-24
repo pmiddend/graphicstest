@@ -28,6 +28,7 @@ library
   hs-source-dirs:      src
   other-modules:       Wrench.Filesystem
                      , Wrench.List
+                     , Wrench.Internal.Picture
   exposed-modules:     Wrench.Angular
                      , Wrench.Color
                      , Wrench.Engine
@@ -40,6 +41,7 @@ library
                      , Wrench.Picture
                      , Wrench.Platform
                      , Wrench.RenderPositionMode
+                     , Wrench.SpriteIdentifier
                      , Wrench.KeyMovement
                      , Wrench.Event
                      , Wrench.ImageParser
