@@ -9,6 +9,7 @@ module Wrench.Time(
   , toSeconds
   , plusDuration
   , fromMilliseconds
+  , toMilliseconds
 ) where
 
 import           System.Clock (Clock (Monotonic), TimeSpec (TimeSpec), getTime)
@@ -30,13 +31,16 @@ tickDelta :: TimeTicks -> TimeTicks -> TimeDelta
 tickDelta new old = TimeDelta $ fromIntegral (_timeTicks new - _timeTicks old) / nanoSecondsDivisor 
 
 plusDuration :: TimeTicks -> TimeDelta -> TimeTicks
-plusDuration t d = TimeTicks (_timeTicks t + floor (_timeDelta d / nanoSecondsDivisor))
+plusDuration t d = TimeTicks (_timeTicks t + floor (_timeDelta d * nanoSecondsDivisor))
 
 fromSeconds :: Double -> TimeDelta
 fromSeconds = TimeDelta
 
 fromMilliseconds :: Double -> TimeDelta
 fromMilliseconds = TimeDelta . (/ 1000)
+
+toMilliseconds :: TimeDelta -> Double
+toMilliseconds (TimeDelta t) = t * 1000
 
 toSeconds :: TimeDelta -> Double
 toSeconds (TimeDelta t) = t
