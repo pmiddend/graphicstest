@@ -20,6 +20,8 @@ data Picture = Line Point Point
              | Pictures [Picture]
              deriving(Show,Eq)
 
+instance Semigroup Picture where
+  a <> b = Pictures [a,b]
 
 instance Monoid Picture where
   mempty = Blank
