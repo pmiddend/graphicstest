@@ -1,13 +1,19 @@
+{-# LANGUAGE TemplateHaskell #-}
 module Wrench.Animation where
 
 import Wrench.ImageId
 import ClassyPrelude
 import Wrench.Time
+import Control.Lens.TH(makeLenses)
+import Control.Lens((^.))
+import Control.Lens.Getter(Getter,to)
 
 data Animation = Animation {
-  animFrameSwitch :: Int,
-  animFrames      :: [ImageId]
+  _animFrameSwitch :: Int,
+  _animFrames      :: [ImageId]
   } deriving(Eq,Show)
 
-animLifetime :: Animation -> TimeDelta
-animLifetime a = fromMilliseconds (fromIntegral (animFrameSwitch a * length (animFrames a)))
+$(makeLenses ''Animation)
+
+animLifetime :: Getter Animation TimeDelta
+animLifetime = to (\a -> fromMilliseconds (fromIntegral ((a ^. animFrameSwitch) * length (a ^. animFrames))))
