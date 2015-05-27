@@ -39,7 +39,11 @@ import           Wrench.RenderPositionMode
 #if defined(USE_SGE)
 import           Wrench.SGEPlatform
 #else
+#if defined(USE_OLDSDL)
+import           Wrench.SDLOldPlatform
+#else
 import           Wrench.SDLPlatform
+#endif
 #endif
 import           ClassyPrelude hiding(FilePath,(</>))
 import System.FilePath
