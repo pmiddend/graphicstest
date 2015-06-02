@@ -15,6 +15,7 @@ module Wrench.Engine(
   , EventHandler(..)
   , ImageSizeGetter
   , wrenchRender
+  , PlatformBackend
   ) where
 
 import           Control.Lens              ((&), (^.))
@@ -191,10 +192,15 @@ mainLoop context prevTime prevDelta world = do
     mainLoop context newTime newDelta newWorld
 
 #if defined(USE_SGE)
-withPlatform :: WindowTitle -> WindowSize -> (SGEPlatform -> IO ()) -> IO ()
+type PlatformBackend = SGEPlatform
+#else
+type PlatformBackend = SDLPlatform
+#endif
+
+withPlatform :: WindowTitle -> WindowSize -> (PlatformBackend -> IO ()) -> IO ()
+#if defined(USE_SGE)
 withPlatform = withSGEPlatform
 #else
-withPlatform :: WindowTitle -> WindowSize -> (SDLPlatform -> IO ()) -> IO ()
 withPlatform = withSDLPlatform
 #endif
 
