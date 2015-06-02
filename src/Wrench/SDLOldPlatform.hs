@@ -101,13 +101,17 @@ renderFinish' :: SDLT.Renderer -> IO ()
 renderFinish' = SDLV.renderPresent
 
 
-withWindow :: T.Text -> (SDLT.Window -> IO a) -> IO a
-withWindow title' callback = withCStringLen (unpack title') $ \title ->
+withWindow :: WindowSize -> T.Text -> (SDLT.Window -> IO a) -> IO a
+withWindow windowSize title' callback = withCStringLen (unpack title') $ \title ->
   let
     acquireResource = SDLV.createWindow (fst title) SDLEnum.SDL_WINDOWPOS_UNDEFINED SDLEnum.SDL_WINDOWPOS_UNDEFINED (fromIntegral screenAbsoluteWidth) (fromIntegral screenAbsoluteHeight) windowFlags
     screenAbsoluteWidth,screenAbsoluteHeight :: Int
-    screenAbsoluteWidth = 0
-    screenAbsoluteHeight = 0
+    screenAbsoluteWidth = case windowSize of
+            DynamicWindowSize -> 0
+            ConstantWindowSize w _ -> w
+    screenAbsoluteHeight = case windowSize of
+            DynamicWindowSize -> 0
+            ConstantWindowSize _ h -> h
     windowFlags = SDLEnum.SDL_WINDOW_RESIZABLE
     releaseResource = SDLV.destroyWindow
   in
@@ -128,7 +132,7 @@ withSDLPlatform :: WindowTitle -> WindowSize -> (SDLPlatform -> IO ()) -> IO ()
 withSDLPlatform windowTitle windowSize cb =
   withFontInit $
     withImgInit $
-      withWindow (unpackWindowTitle windowTitle) $ \window -> do
+      withWindow windowSize (unpackWindowTitle windowTitle) $ \window -> do
         withRenderer window $ \renderer -> do
           case windowSize of
             DynamicWindowSize -> return ()
