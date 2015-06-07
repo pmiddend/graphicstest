@@ -36,6 +36,7 @@ import Wrench.Rectangle ( Rectangle, rectLeftTop, rectangleDimensions )
 data SGEPlatform = SGEPlatform {
      _sgepSystem :: SGE.Systems.InstancePtr
    , _sgepContext :: IORef (Maybe SGE.Renderer.ContextPtr)
+   , _sgepSize :: WindowSize
    }
 
 $(makeLenses ''SGEPlatform)
@@ -54,6 +55,11 @@ fontSystem p = SGE.Systems.fontSystem (p ^. sgepSystem)
 
 imageSystem :: SGEPlatform -> SGE.Image2D.SystemPtr
 imageSystem p = SGE.Systems.imageSystem (p ^. sgepSystem)
+
+windowSizeToMaybe:: WindowSize -> Maybe SGE.Types.Dim
+windowSizeToMaybe sz = case sz of
+                  DynamicWindowSize -> Nothing
+                  ConstantWindowSize w h -> Just (SGE.Types.Dim (w, h))
 
 failMaybe :: Maybe a -> String -> IO a
 failMaybe mb message =
@@ -295,19 +301,14 @@ instance Platform SGEPlatform where
          renderSprites p sprites = runResourceT $ do
                        context <- liftIO $ contextError p
                        textures <- mapM allocTexture sprites
-                       liftIO $ SGE.Sprite.draw (renderer p) context (zipWith translateSprite sprites textures)
+                       liftIO $ SGE.Sprite.draw (renderer p) context (windowSizeToMaybe (p ^. sgepSize)) (zipWith translateSprite sprites textures)
                        where allocTexture s = snd <$> allocate (SGE.Texture.partRawRectExn (s ^. spriteImage) (toSGERect (s ^. spriteSrcRect))) SGE.Texture.destroyPart
                              translateSprite s tex = SGE.Sprite.Object (toSGEPos (s ^. spriteDestRect ^. rectLeftTop))
                                                                        (toSGEDim (s ^. spriteDestRect ^. rectangleDimensions))
                                                                        (realToFrac (s ^. spriteRotation ^. getRadians)) tex
 
-makeDim :: WindowSize -> Maybe SGE.Types.Dim
-makeDim sz = case sz of
-        DynamicWindowSize -> Nothing
-        ConstantWindowSize w h -> Just (SGE.Types.Dim (w, h))
-
 withSGEPlatform :: WindowTitle -> WindowSize -> (SGEPlatform -> IO ()) -> IO ()
 withSGEPlatform windowTitle size cb =
-                SGE.Systems.with (T.unpack (unpackWindowTitle windowTitle)) (makeDim size) $ \system -> do
+                SGE.Systems.with (T.unpack (unpackWindowTitle windowTitle)) (windowSizeToMaybe size) $ \system -> do
                                  context <- newIORef Nothing
-                                 cb (SGEPlatform system context)
+                                 cb (SGEPlatform system context size)
