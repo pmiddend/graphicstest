@@ -44,9 +44,7 @@ class Platform p where
   type PlatformAudioBuffer p :: *
   type PlatformAudioSource p :: *
   loadAudio :: p -> FilePath -> IO (PlatformAudioBuffer p)
-  generateAudioSource :: p -> IO (PlatformAudioSource p)
-  audioBufferToSource :: p -> PlatformAudioBuffer p -> PlatformAudioSource p -> IO ()
-  playSource :: p -> PlayMode -> PlatformAudioSource p -> IO ()
+  playBuffer :: p -> PlatformAudioBuffer p -> PlayMode -> IO (PlatformAudioSource p)
   sourceIsStopped :: p -> PlatformAudioSource p -> IO Bool
   loadImage :: p -> FilePath -> IO (PlatformImage p)
   freeImage :: p -> PlatformImage p -> IO ()

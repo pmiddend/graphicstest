@@ -14,8 +14,6 @@ main :: IO ()
 main =
   withPlatform (WindowTitle "window title") DynamicWindowSize $ \p -> do
     audioBuffer <- loadAudio p "media/ding.wav"
-    source <- generateAudioSource p
-    audioBufferToSource p audioBuffer source
-    playSource p PlayModeOnce source 
+    source <- playBuffer p audioBuffer PlayModeOnce
     loopUntilFinished p source
 

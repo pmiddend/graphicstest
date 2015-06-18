@@ -201,10 +201,11 @@ instance Platform SDLPlatform where
       Nothing -> error $ "error loading " <> fn
       Just wavFile' -> do
         AL.bufferFromFile wavFile'
-  generateAudioSource _ = do
-    AL.genSource
-  audioBufferToSource _ = AL.bufferToSource
-  playSource _ = AL.playSource
+  playBuffer _ b pm = do
+    source <- AL.genSource
+    AL.bufferToSource b source
+    AL.playSource pm source
+    return source
   sourceIsStopped _ = AL.sourceIsStopped
   pollEvents _ = mapMaybe (^. fromSdlEvent) <$> sdlPollEvents
   loadFont _ _ _ = return 1
