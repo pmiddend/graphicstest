@@ -201,6 +201,8 @@ instance Platform SDLPlatform where
       Nothing -> error $ "error loading " <> fn
       Just wavFile' -> do
         AL.bufferFromFile wavFile'
+  freeBuffer _ = AL.freeBuffer
+  freeSource _ = AL.freeSource
   playBuffer _ b pm = do
     source <- AL.genSource
     AL.bufferToSource b source

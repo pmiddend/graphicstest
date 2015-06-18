@@ -1,4 +1,4 @@
-module Wrench.AL2D.AlHelper(useDefaultDevice,withDevice,withContext,withDefaultAl,genObject,genBuffer,genSource,bufferDataFromAudioFile,bufferToSource,playSource,bufferFromFile,sourceIsStopped) where
+module Wrench.AL2D.AlHelper(useDefaultDevice,withDevice,withContext,withDefaultAl,genObject,genBuffer,genSource,bufferDataFromAudioFile,bufferToSource,playSource,bufferFromFile,sourceIsStopped,freeSource,freeBuffer) where
 
 import Sound.ALC.Device(alcOpenDevice,alcCloseDevice)
 import Sound.ALC.Context(alcMakeContextCurrent,alcCreateContext,alcDestroyContext)
@@ -7,13 +7,14 @@ import Sound.ALC.Errors(alcGetError)
 import Sound.ALC.Types(ALCdevice)
 import qualified Data.Vector.Storable as SV
 import Sound.AL.Errors(alGetError)
-import Sound.AL.Source(alGenSources,alSourcei,alSourcePlay,alGetSourcei)
-import Sound.AL.Buffer(alGenBuffers,alBufferData)
+import Sound.AL.Source(alGenSources,alSourcei,alSourcePlay,alGetSourcei,alDeleteSources)
+import Sound.AL.Buffer(alGenBuffers,alBufferData,alDeleteBuffers)
 import Sound.AL.Defines(al_NO_ERROR,al_FORMAT_MONO8,al_FORMAT_MONO16,al_FORMAT_STEREO8,al_FORMAT_STEREO16,al_BUFFER,al_SOURCE_STATE,al_STOPPED,al_LOOPING)
 import Sound.AL.Types(ALvoid,ALint,ALsizei,ALenum)
 import Foreign.Ptr
 import Foreign.ForeignPtr(withForeignPtr)
 import Foreign.Marshal.Array(withArray)
+import Foreign.Marshal.Utils(with)
 import Wrench.PlayMode
 import Prelude()
 import ClassyPrelude
@@ -95,6 +96,12 @@ bufferFromFile file = do
 
 genSource :: MonadIO m => m AlSource
 genSource = genObject (alGenSources 1) AlSource
+
+freeSource :: MonadIO m => AlSource -> m ()
+freeSource s = liftIO $ with (fromIntegral (alSourceImpl s)) (alDeleteSources 1)
+
+freeBuffer :: MonadIO m => AlBuffer -> m ()
+freeBuffer s = liftIO $ with (fromIntegral (alBufferImpl s)) (alDeleteBuffers 1)
 
 sourceIsStopped :: MonadIO m => AlSource -> m Bool
 sourceIsStopped s = liftIO $ alloca $ \attrptr -> do
