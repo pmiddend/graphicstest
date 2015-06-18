@@ -25,7 +25,11 @@ flag sge
 
 flag oldsdl
   Description: Use hackage sdl2 as backend
-  Default: False
+  Default: True
+
+flag openal
+  Description: Use openal as audio backend
+  Default: True
 
 library
   hs-source-dirs:      src
@@ -41,6 +45,7 @@ library
                      , Wrench.Point
                      , Wrench.Rectangle
                      , Wrench.Time
+                     , Wrench.AudioFile
                      , Wrench.Picture
                      , Wrench.Platform
                      , Wrench.RenderPositionMode
@@ -51,6 +56,7 @@ library
                      , Wrench.Animation
                      , Wrench.AnimMap
                      , Wrench.AnimId
+                     , Wrench.PlayMode
                      , Wrench.ImageId
   build-depends:       base >=4.7 && <4.9
                      , linear
@@ -68,6 +74,15 @@ library
                      , lifted-base
                      , classy-prelude
                      , resourcet
+  if flag(openal)
+    build-depends:     al, byteorder
+    other-modules:     Wrench.AL2D.AlBufferFormat
+                     , Wrench.AL2D.AlBuffer
+                     , Wrench.AL2D.AlSource
+                     , Wrench.AL2D.AlcContextFlag
+                     , Wrench.AL2D.AlHelper
+                     , Wrench.AL2D.FFIHelper
+    cpp-options:       -DUSE_OPENAL
   if flag(sge)
     build-depends:     hsge
     cpp-options:       -DUSE_SGE
@@ -80,6 +95,7 @@ library
 --                       , sdl2-ttf
       cpp-options:       -DUSE_OLDSDL
       other-modules:     Wrench.SDLOldPlatform
+      other-modules:     Wrench.SDL2AudioLoader
     else
       build-depends:     SDL2 == 0.1.0
                        , sdl2-image == 0.1.0.0
@@ -87,6 +103,22 @@ library
       cpp-options:       -DUSE_SDL
       other-modules:     Wrench.SDLPlatform
 
+  -- hs-source-dirs:
+  default-language:    Haskell2010
+  default-extensions: NoImplicitPrelude
+                    , OverloadedStrings
+  ghc-options: -Wall
+
+executable example_sound
+  main-is:             Sound.hs
+  hs-source-dirs:      examples
+  -- other-extensions:
+  build-depends:       base >=4.7 && <4.9
+                     , wrench
+                     , classy-prelude
+  if flag(sge)
+    build-depends:     hsge
+    cpp-options:       -DUSE_SGE
   -- hs-source-dirs:
   default-language:    Haskell2010
   default-extensions: NoImplicitPrelude

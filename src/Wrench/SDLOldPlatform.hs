@@ -5,16 +5,12 @@
 module Wrench.SDLOldPlatform where
 
 import           ClassyPrelude             hiding (lookup,FilePath,(</>),Vector)
-import System.FilePath
 import           Control.Lens              ((^.))
 import           Control.Lens.Getter       (Getter, to)
-import           Control.Lens.Prism       (_Just)
-import Control.Lens.Review(re)
 import           Control.Lens.Iso          (Iso', from, iso)
 import Foreign.ForeignPtr(withForeignPtr)
 import Foreign.Ptr(castPtr)
 import           Control.Lens.TH           (makeLenses)
-import           Control.Monad.Loops       (unfoldM)
 import qualified Data.Text                 as T
 import qualified Graphics.UI.SDL.Types     as SDLT
 import qualified Graphics.UI.SDL.Enum     as SDLEnum
@@ -27,16 +23,19 @@ import           Wrench.Event
 import           Wrench.KeyMovement
 import qualified Wrench.Keysym             as Keysym
 import           Wrench.Platform
-import           Wrench.Point
+import           Wrench.AL2D.AlBuffer
+import           Wrench.AL2D.AlSource
+import qualified Wrench.AL2D.AlHelper as AL
+import           Wrench.SDL2AudioLoader
 import           Wrench.Rectangle
 import Foreign.C.String(withCStringLen)
 import Foreign.Ptr(nullPtr,Ptr)
 import Foreign.Storable(peek)
 import Foreign.C.Types(CDouble(..))
-import Data.Vector.Storable(unsafeToForeignPtr0,Vector)
+import Data.Vector.Storable(unsafeToForeignPtr0)
 import Foreign.Marshal.Alloc(alloca)
 import           Foreign.Marshal.Array (allocaArray, peekArray)
-import           Foreign.Marshal.Utils (with,new)
+import           Foreign.Marshal.Utils (with)
 import Codec.Picture(readImage,DynamicImage(..),Image(..))
 
 
@@ -134,12 +133,13 @@ withSDLPlatform windowTitle windowSize cb =
     withImgInit $
       withWindow windowSize (unpackWindowTitle windowTitle) $ \window -> do
         withRenderer window $ \renderer -> do
-          case windowSize of
-            DynamicWindowSize -> return ()
-            ConstantWindowSize w h -> do
-              _ <- SDLV.renderSetLogicalSize renderer (fromIntegral w) (fromIntegral h)
-              return ()
-          cb (SDLPlatform renderer window)
+          AL.withDefaultAl $ \_ _ -> do
+            case windowSize of
+                DynamicWindowSize -> return ()
+                ConstantWindowSize w h -> do
+                    _ <- SDLV.renderSetLogicalSize renderer (fromIntegral w) (fromIntegral h)
+                    return ()
+            cb (SDLPlatform renderer window)
 
 eventArrayStaticSize :: Int
 eventArrayStaticSize = 128
@@ -193,6 +193,19 @@ imageToSurface _ = error "unsupported image format"
 instance Platform SDLPlatform where
   type PlatformImage SDLPlatform = SDLT.Texture
   type PlatformFont SDLPlatform = Int
+  type PlatformAudioBuffer SDLPlatform = AlBuffer
+  type PlatformAudioSource SDLPlatform = AlSource
+  loadAudio _ fn = do
+    wavFile <- sdl2LoadWave fn
+    case wavFile of
+      Nothing -> error $ "error loading " <> fn
+      Just wavFile' -> do
+        AL.bufferFromFile wavFile'
+  generateAudioSource _ = do
+    AL.genSource
+  audioBufferToSource _ = AL.bufferToSource
+  playSource _ = AL.playSource
+  sourceIsStopped _ = AL.sourceIsStopped
   pollEvents _ = mapMaybe (^. fromSdlEvent) <$> sdlPollEvents
   loadFont _ _ _ = return 1
   freeFont _ _ = return ()
