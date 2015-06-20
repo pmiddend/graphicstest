@@ -39,6 +39,7 @@ library
   exposed-modules:     Wrench.Angular
                      , Wrench.Color
                      , Wrench.Engine
+                     , Wrench.AudioData
                      , Wrench.FloatType
                      , Wrench.ImageData
                      , Wrench.Keysym

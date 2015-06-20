@@ -14,7 +14,6 @@ module Wrench.ImageData(
   SurfaceData
   ) where
 
-import           Control.Category          ((>>>))
 import qualified Data.Map.Strict           as M
 import           ClassyPrelude hiding(FilePath,(</>))
 import qualified Data.Text as T
@@ -39,8 +38,8 @@ findSurfaceUnsafe :: SurfaceMap a -> ImageId -> SurfaceData a
 findSurfaceUnsafe sm im = fromMaybe (error $ "Cannot find image \"" <> T.unpack im <> "\" in " <> (show (keys sm))) (im `M.lookup` sm)
 
 -- Holt alle "Descriptorfiles" (also die mit .txt enden) aus dem Directory
-getDescFilesInDir :: MonadIO m => FilePath -> m [ImageDescFile]
-getDescFilesInDir dir = liftIO $ filter (takeExtension >>> (== ".txt")) <$> getFilesInDir dir
+getDescFilesInDir :: (Functor m,MonadIO m) => FilePath -> m [ImageDescFile]
+getDescFilesInDir dir = getFilesWithExtInDir dir ".txt"
 
 readMediaFiles :: forall a m.(Applicative m, MonadIO m) => ImageLoadFunction m a -> FilePath -> m (SurfaceMap a,AnimMap)
 readMediaFiles loadImage fp = (,) <$> (foldr M.union M.empty <$> smaps) <*> (foldr M.union M.empty <$> amaps)
