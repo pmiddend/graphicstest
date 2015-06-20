@@ -74,6 +74,7 @@ library
                      , lifted-base
                      , classy-prelude
                      , resourcet
+                     , vector
   if flag(openal)
     build-depends:     al, byteorder
     other-modules:     Wrench.AL2D.AlBufferFormat
@@ -91,7 +92,6 @@ library
     if flag(oldsdl)
       build-depends:     sdl2
                        , JuicyPixels
-                       , vector
 --                       , sdl2-ttf
       cpp-options:       -DUSE_OLDSDL
       other-modules:     Wrench.SDLOldPlatform

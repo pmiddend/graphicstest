@@ -7,29 +7,34 @@ module Wrench.SGEPlatform(
 )
 where
 
-import           ClassyPrelude hiding(FilePath,(</>))
-import System.FilePath
+import           ClassyPrelude hiding((</>))
 import           Control.Lens ((^.), _2)
 import           Control.Lens.TH (makeLenses)
 import           Control.Monad.Trans.Resource (allocate, runResourceT)
 import qualified Data.Text as T ( unpack )
 import           Linear.V2(_x, _y, V2(..))
+
+import qualified SGE.Audio ( BufferPtr, LoaderPtr, PlayerPtr, PlayStatus(..), Repeat(..), SoundPtr, createBufferExn, createSoundExn, destroyBuffer, destroySound, play, status, withFile )
+import qualified SGE.Dim ( Dim(..), dimW, dimH )
 import qualified SGE.Font ( AddedPtr, ObjectPtr, SystemPtr, addFontExn, draw, createFontExn, destroyAdded, destroyFont )
 import qualified SGE.Image ( RGBA, makeRGBA )
 import qualified SGE.Image2D ( SystemPtr )
 import qualified SGE.Input ( KeyboardPtr, KeyboardKey(..), KeyState(..), withKeyCallback, withKeyRepeatCallback )
+import qualified SGE.Pos ( Pos(..) )
+import qualified SGE.Rect ( Rect(..) )
 import qualified SGE.Renderer ( ContextPtr, DevicePtr, PlanarTexturePtr, beginRenderingExn, clear, destroyPlanarTexture, endRenderingAndDestroy, onscreenTarget, onscreenTargetDim, planarTextureFromPathExn )
 import qualified SGE.Sprite ( Object(..), draw )
-import qualified SGE.Systems ( InstancePtr, fontSystem, imageSystem, keyboard, renderer, windowSystem, with )
+import qualified SGE.Systems ( InstancePtr, audioLoader, audioPlayer, fontSystem, imageSystem, keyboard, renderer, windowSystem, with )
 import qualified SGE.Texture ( destroyPart, partRawRectExn )
-import qualified SGE.Types ( Pos(..), Dim(..), Rect(..), dimW, dimH )
 import qualified SGE.Window ( SystemPtr, poll )
+
 import Wrench.Angular ( getRadians )
 import Wrench.Color ( Color, colorAlpha, colorBlue, colorGreen, colorRed )
 import Wrench.Event ( Event(..) )
 import Wrench.KeyMovement ( KeyMovement(..) )
 import qualified Wrench.Keysym as Keysym ( Keysym(..) )
 import Wrench.Platform ( Platform(..), WindowSize(..), WindowTitle(..), spriteDestRect, spriteImage, spriteRotation, spriteSrcRect, textColor, textContent, textFont, textPosition )
+import Wrench.PlayMode ( PlayMode(..) )
 import Wrench.Point ( Point )
 import Wrench.Rectangle ( Rectangle, rectLeftTop, rectangleDimensions )
 
@@ -40,6 +45,12 @@ data SGEPlatform = SGEPlatform {
    }
 
 $(makeLenses ''SGEPlatform)
+
+audioLoader :: SGEPlatform -> SGE.Audio.LoaderPtr
+audioLoader p = SGE.Systems.audioLoader (p ^. sgepSystem)
+
+audioPlayer :: SGEPlatform -> SGE.Audio.PlayerPtr
+audioPlayer p = SGE.Systems.audioPlayer (p ^. sgepSystem)
 
 keyboard :: SGEPlatform -> SGE.Input.KeyboardPtr
 keyboard p = SGE.Systems.keyboard (p ^. sgepSystem)
@@ -56,10 +67,10 @@ fontSystem p = SGE.Systems.fontSystem (p ^. sgepSystem)
 imageSystem :: SGEPlatform -> SGE.Image2D.SystemPtr
 imageSystem p = SGE.Systems.imageSystem (p ^. sgepSystem)
 
-windowSizeToMaybe:: WindowSize -> Maybe SGE.Types.Dim
+windowSizeToMaybe:: WindowSize -> Maybe SGE.Dim.Dim
 windowSizeToMaybe sz = case sz of
                   DynamicWindowSize -> Nothing
-                  ConstantWindowSize w h -> Just (SGE.Types.Dim (w, h))
+                  ConstantWindowSize w h -> Just (SGE.Dim.Dim (w, h))
 
 failMaybe :: Maybe a -> String -> IO a
 failMaybe mb message =
@@ -75,17 +86,17 @@ contextError p = do
 toSGEColor :: Color -> SGE.Image.RGBA
 toSGEColor c = SGE.Image.makeRGBA (c ^. colorRed) (c ^. colorBlue) (c ^. colorGreen) (c ^. colorAlpha)
 
-toSGEPos :: Point -> SGE.Types.Pos
-toSGEPos p = SGE.Types.Pos (round (p ^._x), round (p ^._y))
+toSGEPos :: Point -> SGE.Pos.Pos
+toSGEPos p = SGE.Pos.Pos (round (p ^._x), round (p ^._y))
 
-toSGEDim :: Point -> SGE.Types.Dim
-toSGEDim p = SGE.Types.Dim (round (p ^._x), round (p ^._y))
+toSGEDim :: Point -> SGE.Dim.Dim
+toSGEDim p = SGE.Dim.Dim (round (p ^._x), round (p ^._y))
 
-toSGERect :: Rectangle -> SGE.Types.Rect
-toSGERect r = SGE.Types.Rect (toSGEPos (r ^. rectLeftTop), toSGEDim (r ^. rectangleDimensions))
+toSGERect :: Rectangle -> SGE.Rect.Rect
+toSGERect r = SGE.Rect.Rect (toSGEPos (r ^. rectLeftTop), toSGEDim (r ^. rectangleDimensions))
 
-fromSGEDim :: SGE.Types.Dim -> Point
-fromSGEDim d = V2 (fromIntegral (SGE.Types.dimW d)) (fromIntegral (SGE.Types.dimH d))
+fromSGEDim :: SGE.Dim.Dim -> Point
+fromSGEDim d = V2 (fromIntegral (SGE.Dim.dimW d)) (fromIntegral (SGE.Dim.dimH d))
 
 makeKeyMovement :: SGE.Input.KeyState -> KeyMovement
 makeKeyMovement s = case s of
@@ -264,16 +275,35 @@ keyCallback inputs key status = appendInput inputs (KeyEvent (key, status))
 keyRepeatCallback :: InputsRef -> SGE.Input.KeyboardKey -> IO ()
 keyRepeatCallback inputs key = appendInput inputs (KeyRepeatEvent key)
 
+makeAudioRepeat :: PlayMode -> SGE.Audio.Repeat
+makeAudioRepeat p = case p of
+                PlayModeOnce -> SGE.Audio.RepeatOnce
+                PlayModeLooping -> SGE.Audio.RepeatLoop
+
 instance Platform SGEPlatform where
+         type PlatformAudioBuffer SGEPlatform = SGE.Audio.BufferPtr
+         type PlatformAudioSource SGEPlatform = SGE.Audio.SoundPtr
          type PlatformImage SGEPlatform = SGE.Renderer.PlanarTexturePtr
          type PlatformFont SGEPlatform = (SGE.Font.AddedPtr, SGE.Font.ObjectPtr)
+         loadAudio p path =
+                   SGE.Audio.withFile (audioLoader p) path (SGE.Audio.createBufferExn (audioPlayer p))
+         playBuffer _ buffer mode = do
+                    sound <- SGE.Audio.createSoundExn buffer
+                    SGE.Audio.play sound (makeAudioRepeat mode) >> return sound
+         freeBuffer _ buffer =
+                    SGE.Audio.destroyBuffer buffer
+         freeSource _ sound =
+                    SGE.Audio.destroySound sound
+         sourceIsStopped _ sound = do
+                         status <- SGE.Audio.status sound
+                         return (status == SGE.Audio.PlayStatusStopped)
          loadImage p path =
-                   SGE.Renderer.planarTextureFromPathExn (renderer p) (imageSystem p) (fpToString path)
+                   SGE.Renderer.planarTextureFromPathExn (renderer p) (imageSystem p) path
          freeImage _ tex =
                    SGE.Renderer.destroyPlanarTexture tex
          -- FIXME: This is not exception-safe
          loadFont p path size = do
-                  added <- SGE.Font.addFontExn (fontSystem p) (fpToString path)
+                  added <- SGE.Font.addFontExn (fontSystem p) path
                   font <- SGE.Font.createFontExn (fontSystem p) Nothing (Just size)
                   return (added, font)
          freeFont _ (added, font) =
