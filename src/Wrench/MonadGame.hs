@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings      #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving      #-}
 module Wrench.MonadGame(
-    MonadGame
+    MonadGame(..)
   , runGame
   , glookupAnimUnsafe
   , glookupImageRectangleUnsafe
@@ -30,7 +30,6 @@ import           Wrench.Rectangle
 import           Wrench.Time
 import System.Random(StdGen,getStdGen)
 import Control.Monad.Random(MonadRandom(..),RandT,evalRandT)
-import           Wrench.Keysym (Keysym)
 import Wrench.Keydowns
 
 class MonadGame m where
