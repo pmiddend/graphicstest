@@ -40,6 +40,7 @@ library
                      , Wrench.Color
                      , Wrench.Engine
                      , Wrench.AudioData
+                     , Wrench.MonadGame
                      , Wrench.FloatType
                      , Wrench.ImageData
                      , Wrench.Keysym
@@ -70,6 +71,8 @@ library
                      , monad-loops
                      , clock
                      , transformers
+                     , MonadRandom
+                     , random
                      , scientific
                      , mtl
                      , lifted-base
