@@ -24,10 +24,12 @@ import           Wrench.KeyMovement
 import           Wrench.PlayMode
 import           Wrench.Picture
 import           Wrench.Platform            (Platform)
+import           Wrench.Event
 import qualified Wrench.Platform            as P
 import qualified Data.Map.Strict as M
 import           Wrench.Rectangle
 import           Wrench.Time
+import           Wrench.Point
 import System.Random(StdGen,getStdGen)
 import Control.Monad.Random(MonadRandom(..),RandT,evalRandT)
 import Wrench.Keydowns
@@ -40,6 +42,7 @@ class MonadGame m where
   gcurrentTicks :: m TimeTicks
   gcurrentTimeDelta :: m TimeDelta
   gcurrentKeydowns :: m Keydowns
+  gviewportSize :: m Point
   grender :: Picture -> m ()
   glookupAnim :: AnimId -> m (Maybe Animation)
   glookupImageRectangle :: ImageId -> m (Maybe Rectangle)
@@ -72,6 +75,7 @@ instance (Monad m,MonadGame m) => MonadGame (StateT n m) where
   gupdateTicks s = lift (gupdateTicks s)
   gupdateKeydowns e = lift (gupdateKeydowns e)
   gcurrentTicks = lift gcurrentTicks
+  gviewportSize = lift gviewportSize
   gcurrentTimeDelta = lift gcurrentTimeDelta
   gcurrentKeydowns = lift gcurrentKeydowns
   grender p = lift (grender p)
@@ -83,6 +87,7 @@ instance (Monad m,MonadGame m,Monoid w) => MonadGame (WriterT w m) where
   gupdateTicks s = lift (gupdateTicks s)
   gplaySound s = lift (gplaySound s)
   gupdateKeydowns e = lift (gupdateKeydowns e)
+  gviewportSize = lift gviewportSize
   gcurrentTicks = lift gcurrentTicks
   gcurrentTimeDelta = lift gcurrentTimeDelta
   gcurrentKeydowns = lift gcurrentKeydowns
@@ -103,6 +108,9 @@ instance Platform p => MonadGame (GameDataM p) where
         sourcesWithState <- traverse (\ts -> (liftIO (P.sourceIsStopped p ts)) >>= (\stopState -> return (ts,stopState))) sources
         mapM_ (\ts -> liftIO (P.freeSource p (fst ts))) (filter snd sourcesWithState)
         modify (\oldState -> oldState { gdSources = source : (map fst . filter (not . snd) $ sourcesWithState) })
+  gviewportSize = do
+    p <- gets gdPlatform
+    liftIO (P.viewportSize p)
   gpollEvents = do
     p <- gets gdPlatform
     liftIO $ P.pollEvents p
@@ -134,8 +142,8 @@ instance Platform p => MonadGame (GameDataM p) where
     return (snd <$> (sid `lookup` surfaces))
 
 processKeydown :: Event -> Keydowns -> Keydowns
-processKeydown (Keyboard KeyUp _ keysym) = S.delete keysym
-processKeydown (Keyboard KeyDown _ keysym) = S.insert keysym
+processKeydown (Keyboard (KeyboardEvent KeyUp _ keysym)) = S.delete keysym
+processKeydown (Keyboard (KeyboardEvent KeyDown _ keysym)) = S.insert keysym
 processKeydown _ = id
 
 processKeydowns :: Keydowns -> [Event] -> Keydowns

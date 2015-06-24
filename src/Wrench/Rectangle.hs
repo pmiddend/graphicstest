@@ -4,6 +4,7 @@ module Wrench.Rectangle(
     , rectLeftTop
     , rectRightBottom
     , rectangleFromPoints
+    , rectangleFromOriginAndDim
     , rectangleDimensions
     ) where
 
@@ -18,6 +19,9 @@ data Rectangle = Rectangle { _rectLeftTop     :: Point
 
 rectangleFromPoints :: Point -> Point -> Rectangle
 rectangleFromPoints = Rectangle
+
+rectangleFromOriginAndDim :: Point -> Point -> Rectangle
+rectangleFromOriginAndDim origin dim = rectangleFromPoints origin (origin + dim)
 
 rectangleDimensions :: Getter Rectangle Point
 rectangleDimensions = to rectangleDimensions'

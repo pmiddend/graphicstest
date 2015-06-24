@@ -52,6 +52,8 @@ library
                      , Wrench.Platform
                      , Wrench.RenderPositionMode
                      , Wrench.Keydowns
+                     , Wrench.MouseButtonMovement
+                     , Wrench.MouseButton
                      , Wrench.SpriteIdentifier
                      , Wrench.KeyMovement
                      , Wrench.Event

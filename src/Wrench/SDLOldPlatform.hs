@@ -1,4 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes                 #-}
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TypeFamilies               #-}
@@ -20,6 +21,8 @@ import           Linear.V2                 (V2 (..), _x, _y)
 import           Wrench.Angular
 import           Wrench.Color
 import           Wrench.Event
+import           Wrench.MouseButtonMovement
+import           Wrench.MouseButton
 import           Wrench.KeyMovement
 import qualified Wrench.Keysym             as Keysym
 import           Wrench.Platform
@@ -74,9 +77,17 @@ wrenchColor = iso fromSdlColor toSdlColor
 
 fromSdlEvent :: Getter SDLT.Event (Maybe Event)
 fromSdlEvent = to fromSdlEvent'
-  where fromSdlEvent' (SDLT.KeyboardEvent _ _ _ state r sym) = Just $ Keyboard (fromSdlKeyState state) (r /= 0) (fromSdlSym sym)
+  where fromSdlEvent' (SDLT.KeyboardEvent _ _ _ state r sym) = Just $ Keyboard $ KeyboardEvent (fromSdlKeyState state) (r /= 0) (fromSdlSym sym)
         fromSdlEvent' (SDLT.QuitEvent{}) = Just Quit
+        fromSdlEvent' (SDLT.MouseButtonEvent{SDLT.mouseButtonEventState=state,SDLT.mouseButtonEventButton=button,SDLT.mouseButtonEventX=x,SDLT.mouseButtonEventY=y}) = Just $ MouseButton $ MouseButtonEvent{_mouseButton=fromSdlMouseButton button,_mouseButtonMovement=fromSdlMouseButtonState state,_mousePosition=fromIntegral <$> V2 x y}
         fromSdlEvent' _ = Nothing
+        fromSdlMouseButton SDLEnum.SDL_BUTTON_LEFT = LeftButton
+        fromSdlMouseButton SDLEnum.SDL_BUTTON_MIDDLE = MiddleButton
+        fromSdlMouseButton SDLEnum.SDL_BUTTON_RIGHT = RightButton
+        fromSdlMouseButton _ = error "Unknown mouse button"
+        fromSdlMouseButtonState SDLEnum.SDL_PRESSED = ButtonDown
+        fromSdlMouseButtonState SDLEnum.SDL_RELEASED = ButtonUp
+        fromSdlMouseButtonState _ = error "Unknown mouse button state"
         fromSdlKeyState k | k == SDLEnum.SDL_RELEASED = KeyUp
                           | k == SDLEnum.SDL_PRESSED = KeyDown
         fromSdlSym (SDLT.Keysym _ keycode _) = fromSdlKeycode keycode
