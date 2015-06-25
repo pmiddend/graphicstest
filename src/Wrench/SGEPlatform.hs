@@ -14,29 +14,172 @@ import           Control.Monad.Trans.Resource (allocate, runResourceT)
 import qualified Data.Text as T ( unpack )
 import           Linear.V2(_x, _y, V2(..))
 
-import qualified SGE.Audio ( BufferPtr, LoaderPtr, PlayerPtr, PlayStatus(..), Repeat(..), SoundPtr, createBufferExn, createSoundExn, destroyBuffer, destroySound, play, status, withFile )
-import qualified SGE.Dim ( Dim(..), dimW, dimH )
-import qualified SGE.Font ( AddedPtr, ObjectPtr, SystemPtr, addFontExn, draw, createFontExn, destroyAdded, destroyFont )
-import qualified SGE.Image ( RGBA, makeRGBA )
-import qualified SGE.Image2D ( SystemPtr )
-import qualified SGE.Input ( KeyboardPtr, KeyboardKey(..), KeyState(..), withKeyCallback, withKeyRepeatCallback )
-import qualified SGE.Pos ( Pos(..) )
-import qualified SGE.Rect ( Rect(..) )
-import qualified SGE.Renderer ( ContextPtr, DevicePtr, PlanarTexturePtr, beginRenderingExn, clear, destroyPlanarTexture, endRenderingAndDestroy, onscreenTarget, onscreenTargetDim, planarTextureFromPathExn )
-import qualified SGE.Sprite ( Object(..), draw )
-import qualified SGE.Systems ( InstancePtr, audioLoader, audioPlayer, fontSystem, imageSystem, keyboard, renderer, windowSystem, with )
-import qualified SGE.Texture ( destroyPart, partRawRectExn )
-import qualified SGE.Window ( SystemPtr, poll )
+import qualified SGE.Audio (
+         BufferPtr
+       , LoaderPtr
+       , PlayerPtr
+       , PlayStatus(..)
+       , Repeat(..)
+       , SoundPtr
+       , createBufferExn
+       , createSoundExn
+       , destroyBuffer
+       , destroySound
+       , play
+       , status
+       , withFile
+       )
 
-import Wrench.Angular ( getRadians )
-import Wrench.Color ( Color, colorAlpha, colorBlue, colorGreen, colorRed )
-import Wrench.Event ( Event(..) )
-import Wrench.KeyMovement ( KeyMovement(..) )
-import qualified Wrench.Keysym as Keysym ( Keysym(..) )
-import Wrench.Platform ( Platform(..), WindowSize(..), WindowTitle(..), spriteDestRect, spriteImage, spriteRotation, spriteSrcRect, textColor, textContent, textFont, textPosition )
-import Wrench.PlayMode ( PlayMode(..) )
-import Wrench.Point ( Point )
-import Wrench.Rectangle ( Rectangle, rectLeftTop, rectangleDimensions )
+import qualified SGE.Dim (
+         Dim(..)
+       , dimW
+       , dimH
+       )
+
+import qualified SGE.Font (
+         AddedPtr
+       , ObjectPtr
+       , SystemPtr
+       , addFontExn
+       , draw
+       , createFontExn
+       , destroyAdded
+       , destroyFont
+       )
+
+import qualified SGE.Image (
+         RGBA
+       , makeRGBA
+       )
+
+import qualified SGE.Image2D (
+         SystemPtr
+       )
+
+import qualified SGE.Input (
+         CursorButtonCode(..)
+       , CursorButtonState(..)
+       , CursorPtr
+       , KeyboardPtr
+       , KeyboardKey(..)
+       , KeyState(..)
+       , withCursorButtonCallback
+       , withKeyCallback
+       , withKeyRepeatCallback
+       )
+
+import qualified SGE.Pos (
+         Pos(..)
+       , posX
+       , posY
+       )
+
+import qualified SGE.Rect (
+         Rect(..)
+       )
+
+import qualified SGE.Renderer (
+         ContextPtr
+       , DevicePtr
+       , PlanarTexturePtr
+       , beginRenderingExn
+       , clear
+       , destroyPlanarTexture
+       , endRenderingAndDestroy
+       , onscreenTarget
+       , onscreenTargetDim
+       , planarTextureFromPathExn
+       )
+
+import qualified SGE.Sprite (
+         Object(..)
+       , draw
+       )
+
+import qualified SGE.Systems (
+         InstancePtr
+       , audioLoader
+       , audioPlayer
+       , cursor
+       , fontSystem
+       , imageSystem
+       , keyboard
+       , renderer
+       , windowSystem
+       , with
+       )
+
+import qualified SGE.Texture (
+         destroyPart
+       , partRawRectExn
+       )
+
+import qualified SGE.Window (
+         SystemPtr
+       , poll
+       )
+
+import Wrench.Angular (
+         getRadians
+       )
+
+import Wrench.Color (
+         Color
+       , colorAlpha
+       , colorBlue
+       , colorGreen
+       , colorRed
+       )
+
+import Wrench.Event (
+         Event(..)
+       , KeyboardEvent(..)
+       , MouseButtonEvent(..)
+       )
+
+import Wrench.KeyMovement (
+         KeyMovement(..)
+       )
+
+import qualified Wrench.Keysym as Keysym (
+         Keysym(..)
+       )
+
+import qualified Wrench.MouseButton as MouseButton (
+         MouseButton(..)
+       )
+
+import Wrench.MouseButtonMovement (
+         MouseButtonMovement(..)
+       )
+
+import Wrench.Platform (
+         Platform(..)
+       , WindowSize(..)
+       , WindowTitle(..)
+       , spriteDestRect
+       , spriteImage
+       , spriteRotation
+       , spriteSrcRect
+       , textColor
+       , textContent
+       , textFont
+       , textPosition
+       )
+
+import Wrench.PlayMode (
+         PlayMode(..)
+       )
+
+import Wrench.Point (
+         Point
+       )
+
+import Wrench.Rectangle (
+         Rectangle
+       , rectLeftTop
+       , rectangleDimensions
+       )
 
 data SGEPlatform = SGEPlatform {
      _sgepSystem :: SGE.Systems.InstancePtr
@@ -54,6 +197,9 @@ audioPlayer p = SGE.Systems.audioPlayer (p ^. sgepSystem)
 
 keyboard :: SGEPlatform -> SGE.Input.KeyboardPtr
 keyboard p = SGE.Systems.keyboard (p ^. sgepSystem)
+
+cursor :: SGEPlatform -> SGE.Input.CursorPtr
+cursor p = SGE.Systems.cursor (p ^. sgepSystem)
 
 renderer :: SGEPlatform -> SGE.Renderer.DevicePtr
 renderer p = SGE.Systems.renderer (p ^. sgepSystem)
@@ -97,6 +243,21 @@ toSGERect r = SGE.Rect.Rect (toSGEPos (r ^. rectLeftTop), toSGEDim (r ^. rectang
 
 fromSGEDim :: SGE.Dim.Dim -> Point
 fromSGEDim d = V2 (fromIntegral (SGE.Dim.dimW d)) (fromIntegral (SGE.Dim.dimH d))
+
+fromSGEPos :: SGE.Pos.Pos -> Point
+fromSGEPos p = V2 (fromIntegral (SGE.Pos.posX p)) (fromIntegral (SGE.Pos.posY p))
+
+makeMouseButtonMovement :: SGE.Input.CursorButtonState -> MouseButtonMovement
+makeMouseButtonMovement s = case s of
+                        SGE.Input.CursorbuttonstatePressed -> ButtonDown
+                        SGE.Input.CursorbuttonstateReleased -> ButtonUp
+
+makeMouseButton :: SGE.Input.CursorButtonCode -> Maybe MouseButton.MouseButton
+makeMouseButton b = case b of
+                SGE.Input.CursorbuttoncodeLeft -> Just MouseButton.LeftButton
+                SGE.Input.CursorbuttoncodeMiddle -> Just MouseButton.MiddleButton
+                SGE.Input.CursorbuttoncodeRight -> Just MouseButton.RightButton
+                SGE.Input.CursorbuttoncodeUnknown -> Nothing
 
 makeKeyMovement :: SGE.Input.KeyState -> KeyMovement
 makeKeyMovement s = case s of
@@ -231,43 +392,42 @@ makeKeySym s = case s of
             SGE.Input.KeyboardkeyYen -> Nothing
             SGE.Input.KeyboardkeyUnknown -> Nothing
 
-data KeyboardInput =
+data InputEvent =
      KeyEvent (SGE.Input.KeyboardKey, SGE.Input.KeyState)
      | KeyRepeatEvent SGE.Input.KeyboardKey
+     | CursorButtonEvent (SGE.Input.CursorButtonCode, SGE.Input.CursorButtonState, SGE.Pos.Pos)
 
-type Inputs = [KeyboardInput]
+type Inputs = [InputEvent]
 type InputsRef = IORef Inputs
 
-makeKeyEvent :: KeyboardInput -> Maybe Event
-makeKeyEvent event = case event of
-             KeyEvent (k, s) -> do
-                      keysym <- makeKeySym k
-                      return $ Keyboard {
-                               keyMovement = makeKeyMovement s
-                             , keyRepeat = False
-                             , keySym = keysym
-                             }
-             KeyRepeatEvent k -> do
-                            keysym <- makeKeySym k
-                            return $ Keyboard {
-                                     keyMovement = KeyDown
-                                   , keyRepeat = True
-                                   , keySym = keysym
-                                   }
+makeEvent :: InputEvent -> Maybe Event
+makeEvent event = case event of
+          KeyEvent (k, s) -> do
+                   keysym <- makeKeySym k
+                   return $ Keyboard (KeyboardEvent (makeKeyMovement s) False keysym)
+          KeyRepeatEvent k -> do
+                         keysym <- makeKeySym k
+                         return $ Keyboard (KeyboardEvent KeyDown True keysym)
+          CursorButtonEvent (k, s, p) -> do
+                            buttonCode <- makeMouseButton k
+                            return  $ MouseButton (MouseButtonEvent buttonCode (makeMouseButtonMovement s) (fromSGEPos p))
 
 makeInputResults :: SGEPlatform -> InputsRef -> IO [Event]
 makeInputResults p inputs = do
                  result <- SGE.Window.poll (window p)
                  if result then do
                     curInputs <- readIORef inputs
-                    return $ mapMaybe makeKeyEvent curInputs
+                    return $ mapMaybe makeEvent curInputs
                  else
                     return [Quit]
 
-appendInput :: InputsRef -> KeyboardInput -> IO ()
+appendInput :: InputsRef -> InputEvent -> IO ()
 appendInput inputs input = do
             old <- readIORef inputs
             writeIORef inputs (input : old)
+
+cursorButtonCallback :: InputsRef -> SGE.Input.CursorButtonCode -> SGE.Input.CursorButtonState -> SGE.Pos.Pos -> IO ()
+cursorButtonCallback inputs code status pos = appendInput inputs (CursorButtonEvent (code, status, pos))
 
 keyCallback :: InputsRef -> SGE.Input.KeyboardKey -> SGE.Input.KeyState -> IO ()
 keyCallback inputs key status = appendInput inputs (KeyEvent (key, status))
@@ -311,7 +471,8 @@ instance Platform SGEPlatform where
          pollEvents p = do
                     inputs <- newIORef []
                     SGE.Input.withKeyCallback (keyboard p) (keyCallback inputs)
-                                              (SGE.Input.withKeyRepeatCallback (keyboard p) (keyRepeatCallback inputs) (makeInputResults p inputs))
+                                              (SGE.Input.withKeyRepeatCallback (keyboard p) (keyRepeatCallback inputs)
+                                                                               (SGE.Input.withCursorButtonCallback (cursor p) (cursorButtonCallback inputs) (makeInputResults p inputs)))
          renderBegin p = do
                      context <- SGE.Renderer.beginRenderingExn $ renderer p
                      writeIORef (p ^. sgepContext) (Just context)
