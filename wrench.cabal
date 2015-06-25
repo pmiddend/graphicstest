@@ -55,6 +55,7 @@ library
                      , Wrench.MouseButtonMovement
                      , Wrench.MouseButton
                      , Wrench.SpriteIdentifier
+                     , Wrench.CommonGeometry
                      , Wrench.KeyMovement
                      , Wrench.Event
                      , Wrench.ImageParser
