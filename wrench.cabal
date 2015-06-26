@@ -100,7 +100,6 @@ library
     if flag(oldsdl)
       build-depends:     sdl2
                        , JuicyPixels
---                       , sdl2-ttf
       cpp-options:       -DUSE_OLDSDL
       other-modules:     Wrench.SDLOldPlatform
       other-modules:     Wrench.SDL2AudioLoader
