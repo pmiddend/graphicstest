@@ -16,6 +16,7 @@ import           ClassyPrelude hiding((</>),FilePath)
 import Data.Maybe(fromJust)
 import           Wrench.Animation
 import           Wrench.AnimId
+import           Wrench.Color
 import           Wrench.Engine
 import           Wrench.AudioData
 import           Wrench.ImageData
@@ -59,6 +60,7 @@ data GameData p = GameData {
   , gdSources      :: [P.PlatformAudioSource p]
   , gdAnims        :: AnimMap
   , gdPlatform     :: p
+  , gdBackgroundColor     :: Maybe Color
   , gdCurrentTicks :: !TimeTicks
   , gdTimeDelta    :: !TimeDelta
   , gdKeydowns     :: !Keydowns
@@ -132,8 +134,9 @@ instance Platform p => MonadGame (GameDataM p) where
   grender picture = do
     p <- gets gdPlatform
     sf <- gets gdSurfaces
+    bg <- gets gdBackgroundColor
     font <- gets gdFont
-    liftIO $ wrenchRender p sf font Nothing picture
+    liftIO $ wrenchRender p sf font bg picture
   glookupAnim aid = do
     anims <- gets gdAnims
     return (aid `lookup` anims)
@@ -149,8 +152,8 @@ processKeydown _ = id
 processKeydowns :: Keydowns -> [Event] -> Keydowns
 processKeydowns = foldr processKeydown
 
-runGame :: FilePath -> P.WindowTitle -> P.WindowSize -> GameDataM PlatformBackend () -> IO ()
-runGame mediaDir title size action = withPlatform title size $
+runGame :: FilePath -> P.WindowTitle -> P.WindowSize -> Maybe Color -> GameDataM PlatformBackend () -> IO ()
+runGame mediaDir title size bgColor action = withPlatform title size $ do
   \platform -> do
     (images, anims) <- readMediaFiles (P.loadImage platform) (mediaDir </> "images")
     sounds <- readAudioFiles (P.loadAudio platform) (mediaDir </> "sounds")
@@ -164,6 +167,7 @@ runGame mediaDir title size action = withPlatform title size $
         , gdAnims = anims
         , gdPlatform = platform
         , gdCurrentTicks = ticks
+        , gdBackgroundColor = bgColor
         , gdTimeDelta = fromSeconds 0
         , gdKeydowns = mempty
         , gdFont = font
