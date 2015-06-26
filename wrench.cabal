@@ -47,6 +47,8 @@ library
                      , Wrench.Point
                      , Wrench.Rectangle
                      , Wrench.Time
+                     , Wrench.BitmapFont.Render
+                     , Wrench.BitmapFont.RenderResult
                      , Wrench.AudioFile
                      , Wrench.Picture
                      , Wrench.Platform
@@ -145,6 +147,21 @@ executable example_main
     build-depends:     hsge
     cpp-options:       -DUSE_SGE
   -- hs-source-dirs:
+  default-language:    Haskell2010
+  default-extensions: NoImplicitPrelude
+                    , OverloadedStrings
+  ghc-options: -Wall
+
+executable example_bitmapfont
+  main-is:             BitmapFont.hs
+  hs-source-dirs:      examples
+  -- other-extensions:
+  build-depends:       base >=4.7 && <4.9
+                     , wrench
+                     , lens
+                     , linear
+                     , classy-prelude
+                     , filepath
   default-language:    Haskell2010
   default-extensions: NoImplicitPrelude
                     , OverloadedStrings
