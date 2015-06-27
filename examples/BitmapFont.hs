@@ -14,8 +14,7 @@ import Control.Lens((^.))
 mainLoop :: Platform p => p -> SurfaceMap (PlatformImage p) -> IO ()
 mainLoop platform images = do
     events <- pollEvents platform
-    when (any isQuitEvent events) (putStrLn "Would quit")
-    let picture = (textToPicture images "abfont" 10 "aabb") ^. bfrrPicture
+    let picture = (textToPicture images "djvu" 0 "Füße in Osnabrück") ^. bfrrPicture
     wrenchRender platform images undefined (Just colorsBlack) picture
     if any isQuitEvent events
       then return ()

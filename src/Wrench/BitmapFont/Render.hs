@@ -35,7 +35,7 @@ textToPicture images prefix spacing text =
     characterPictures = mapMaybe ((pictureSpriteTopLeft <$>) . (characterToImage images prefix)) (unpack text)
     characterPositionAdder [] _ = [V2 0 0]
     characterPositionAdder (x:xs) _ = (x + V2 (fontSize ^. rectangleDimensions . _x + spacing) 0):x:xs
-    characterPositions = foldl characterPositionAdder [] characterPictures
+    characterPositions = reverse (foldl characterPositionAdder [] characterPictures)
   in
     RenderResult{
         _bfrrPicture = pictures (zipWith pictureTranslated characterPositions characterPictures)
