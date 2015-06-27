@@ -135,12 +135,12 @@ renderPicture rs p = case p of
     let (image,srcRect) = findSurfaceUnsafe (rs ^. rsSurfaceData) identifier
         m = rs ^. rsTransformation
         origin = (m !* V3 0 0 1) ^. toV2
-        spriteDim = fromMaybe (srcRect ^. rectangleDimensions) resampledSize
+        spriteDim = fromMaybe (srcRect ^. rectDimensions) resampledSize
         pos = case positionMode of
           RenderPositionCenter -> origin - (spriteDim ^. dividing 2)
           RenderPositionTopLeft -> origin
         rot = rs ^. rsRotation
-        destRect = rectangleFromPoints pos (pos + spriteDim)
+        destRect = rectFromPoints pos (pos + spriteDim)
     return [RenderOperationSprite (SpriteInstance image srcRect destRect rot)]
 
 wrenchRender :: Platform p => p -> SurfaceMap (PlatformImage p) -> PlatformFont p -> Maybe Color -> Picture -> IO ()

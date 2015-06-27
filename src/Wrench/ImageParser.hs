@@ -51,7 +51,7 @@ point :: Parser Point
 point = V2 <$> scientificRealFloat <*> (char ',' *> scientificRealFloat)
 
 rectangle :: Parser Rectangle
-rectangle = rectangleFromPoints <$> point <*> (char ',' *> point)
+rectangle = rectFromPoints <$> point <*> (char ',' *> point)
 
 imageDataLineC :: Parser DataLine
 imageDataLineC = (char '>' *> (DataLineAnim <$> imageDataLineAnimC)) <|> (DataLineImage <$> imageDataLineImageC)

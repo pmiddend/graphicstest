@@ -56,11 +56,11 @@ toSdlRect :: Rectangle -> SDLT.Rect
 toSdlRect r = SDLT.Rect
               (r ^. rectLeftTop ^. _x ^. floored)
               (r ^. rectLeftTop ^. _y ^. floored)
-              (r ^. rectangleDimensions ^. _x ^. floored)
-              (r ^. rectangleDimensions ^. _y ^. floored)
+              (r ^. rectDimensions ^. _x ^. floored)
+              (r ^. rectDimensions ^. _y ^. floored)
 
 fromSdlRect :: SDLT.Rect -> Rectangle
-fromSdlRect (SDLT.Rect x y w h) = rectangleFromPoints (V2 (fromIntegral x) (fromIntegral y)) (V2 (fromIntegral (x + w)) (fromIntegral (y + h)))
+fromSdlRect (SDLT.Rect x y w h) = rectFromPoints (V2 (fromIntegral x) (fromIntegral y)) (V2 (fromIntegral (x + w)) (fromIntegral (y + h)))
 
 fromSdlColor :: SDLT.Color -> Color
 fromSdlColor (SDLT.Color r g b a) = mkColorFromRgba r g b a

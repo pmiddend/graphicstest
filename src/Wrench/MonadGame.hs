@@ -33,6 +33,8 @@ import           Wrench.Time
 import           Wrench.Point
 import System.Random(StdGen,getStdGen)
 import Control.Monad.Random(MonadRandom(..),RandT,evalRandT)
+import Wrench.BitmapFont.Render
+import Wrench.BitmapFont.RenderResult
 import Wrench.Keydowns
 
 class MonadGame m where
@@ -41,6 +43,7 @@ class MonadGame m where
   gplaySound :: SoundId -> m ()
   gupdateKeydowns :: [Event] -> m ()
   gcurrentTicks :: m TimeTicks
+  grenderText :: FontPrefix -> Spacing -> Text -> m RenderResult
   gcurrentTimeDelta :: m TimeDelta
   gcurrentKeydowns :: m Keydowns
   gviewportSize :: m Point
@@ -74,6 +77,7 @@ newtype GameDataM p a = GameDataM {
 instance (Monad m,MonadGame m) => MonadGame (StateT n m) where
   gpollEvents = lift gpollEvents
   gplaySound s = lift (gplaySound s)
+  grenderText p s t = lift (grenderText p s t)
   gupdateTicks s = lift (gupdateTicks s)
   gupdateKeydowns e = lift (gupdateKeydowns e)
   gcurrentTicks = lift gcurrentTicks
@@ -87,6 +91,7 @@ instance (Monad m,MonadGame m) => MonadGame (StateT n m) where
 instance (Monad m,MonadGame m,Monoid w) => MonadGame (WriterT w m) where
   gpollEvents = lift gpollEvents
   gupdateTicks s = lift (gupdateTicks s)
+  grenderText p s t = lift (grenderText p s t)
   gplaySound s = lift (gplaySound s)
   gupdateKeydowns e = lift (gupdateKeydowns e)
   gviewportSize = lift gviewportSize
@@ -110,6 +115,9 @@ instance Platform p => MonadGame (GameDataM p) where
         sourcesWithState <- traverse (\ts -> (liftIO (P.sourceIsStopped p ts)) >>= (\stopState -> return (ts,stopState))) sources
         mapM_ (\ts -> liftIO (P.freeSource p (fst ts))) (filter snd sourcesWithState)
         modify (\oldState -> oldState { gdSources = source : (map fst . filter (not . snd) $ sourcesWithState) })
+  grenderText p s t = do
+    surfaces <- gets gdSurfaces
+    return (textToPicture surfaces p s t)
   gviewportSize = do
     p <- gets gdPlatform
     liftIO (P.viewportSize p)

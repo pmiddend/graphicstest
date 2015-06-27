@@ -1,5 +1,7 @@
 module Wrench.BitmapFont.Render(
-  textToPicture) where
+    textToPicture
+  , FontPrefix
+  , Spacing) where
 
 import Wrench.BitmapFont.RenderResult
 import ClassyPrelude
@@ -34,10 +36,10 @@ textToPicture images prefix spacing text =
     fontSize = (images ^?! ix (prefix <> "_a")) ^. _2
     characterPictures = mapMaybe ((pictureSpriteTopLeft <$>) . (characterToImage images prefix)) (unpack text)
     characterPositionAdder [] _ = [V2 0 0]
-    characterPositionAdder (x:xs) _ = (x + V2 (fontSize ^. rectangleDimensions . _x + spacing) 0):x:xs
+    characterPositionAdder (x:xs) _ = (x + V2 (fontSize ^. rectDimensions . _x + spacing) 0):x:xs
     characterPositions = reverse (foldl characterPositionAdder [] characterPictures)
   in
     RenderResult{
         _bfrrPicture = pictures (zipWith pictureTranslated characterPositions characterPictures)
-      , _bfrrSize = V2 (sum (characterPositions ^.. traverse . _y)) (fontSize ^. rectangleDimensions . _y)
+      , _bfrrSize = V2 (sum (characterPositions ^.. traverse . _y)) (fontSize ^. rectDimensions . _y)
       }

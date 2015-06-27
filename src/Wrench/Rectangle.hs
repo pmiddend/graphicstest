@@ -3,9 +3,9 @@ module Wrench.Rectangle(
       Rectangle
     , rectLeftTop
     , rectRightBottom
-    , rectangleFromPoints
-    , rectangleFromOriginAndDim
-    , rectangleDimensions
+    , rectFromPoints
+    , rectFromOriginAndDim
+    , rectDimensions
     ) where
 
 import Wrench.Point
@@ -17,14 +17,14 @@ data Rectangle = Rectangle { _rectLeftTop     :: Point
                            , _rectRightBottom :: Point
                            } deriving(Show,Eq)
 
-rectangleFromPoints :: Point -> Point -> Rectangle
-rectangleFromPoints = Rectangle
+rectFromPoints :: Point -> Point -> Rectangle
+rectFromPoints = Rectangle
 
-rectangleFromOriginAndDim :: Point -> Point -> Rectangle
-rectangleFromOriginAndDim origin dim = rectangleFromPoints origin (origin + dim)
+rectFromOriginAndDim :: Point -> Point -> Rectangle
+rectFromOriginAndDim origin dim = rectFromPoints origin (origin + dim)
 
-rectangleDimensions :: Getter Rectangle Point
-rectangleDimensions = to rectangleDimensions'
- where rectangleDimensions' (Rectangle lt rb) = rb - lt
+rectDimensions :: Getter Rectangle Point
+rectDimensions = to rectDimensions'
+ where rectDimensions' (Rectangle lt rb) = rb - lt
 
 $(makeLenses ''Rectangle)
