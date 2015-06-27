@@ -178,7 +178,7 @@ import Wrench.Point (
 import Wrench.Rectangle (
          Rectangle
        , rectLeftTop
-       , rectangleDimensions
+       , rectDimensions
        )
 
 data SGEPlatform = SGEPlatform {
@@ -239,7 +239,7 @@ toSGEDim :: Point -> SGE.Dim.Dim
 toSGEDim p = SGE.Dim.Dim (round (p ^._x), round (p ^._y))
 
 toSGERect :: Rectangle -> SGE.Rect.Rect
-toSGERect r = SGE.Rect.Rect (toSGEPos (r ^. rectLeftTop), toSGEDim (r ^. rectangleDimensions))
+toSGERect r = SGE.Rect.Rect (toSGEPos (r ^. rectLeftTop), toSGEDim (r ^. rectDimensions))
 
 fromSGEDim :: SGE.Dim.Dim -> Point
 fromSGEDim d = V2 (fromIntegral (SGE.Dim.dimW d)) (fromIntegral (SGE.Dim.dimH d))
@@ -495,7 +495,7 @@ instance Platform SGEPlatform where
                        liftIO $ SGE.Sprite.draw (renderer p) context (windowSizeToMaybe (p ^. sgepSize)) (zipWith translateSprite sprites textures)
                        where allocTexture s = snd <$> allocate (SGE.Texture.partRawRectExn (s ^. spriteImage) (toSGERect (s ^. spriteSrcRect))) SGE.Texture.destroyPart
                              translateSprite s tex = SGE.Sprite.Object (toSGEPos (s ^. spriteDestRect ^. rectLeftTop))
-                                                                       (toSGEDim (s ^. spriteDestRect ^. rectangleDimensions))
+                                                                       (toSGEDim (s ^. spriteDestRect ^. rectDimensions))
                                                                        (realToFrac (s ^. spriteRotation ^. getRadians)) tex
 
 withSGEPlatform :: WindowTitle -> WindowSize -> (SGEPlatform -> IO ()) -> IO ()
