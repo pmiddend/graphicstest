@@ -14,11 +14,12 @@ import Control.Lens((^.))
 mainLoop :: Platform p => p -> SurfaceMap (PlatformImage p) -> IO ()
 mainLoop platform images = do
     events <- pollEvents platform
-    let picture = (textToPicture images "djvu" 0 "Füße in Osnabrück") ^. bfrrPicture
-    wrenchRender platform images undefined (Just colorsBlack) picture
     if any isQuitEvent events
       then return ()
-      else mainLoop platform images
+      else do
+        let picture = (textToPicture images "djvu" 0 "Füße in Osnabrück") ^. bfrrPicture
+        wrenchRender platform images undefined (Just colorsBlack) picture
+        mainLoop platform images
 
 main :: IO ()
 main = withPlatform "bitmap font test" DynamicWindowSize $ \platform -> do
