@@ -38,13 +38,10 @@ import Wrench.SpriteIdentifier
 import           Wrench.Point              (Point)
 import           Wrench.RenderPositionMode
 #if defined(USE_SGE)
-import           Wrench.SGEPlatform
-#else
-#if defined(USE_OLDSDL)
-import           Wrench.SDLOldPlatform
-#else
-import           Wrench.SDLPlatform
+import           Wrench.Backends.Sge.SGEPlatform
 #endif
+#if defined(USE_SDL)
+import           Wrench.Backends.Sdl.Sdl2Platform
 #endif
 import           ClassyPrelude hiding(FilePath,(</>))
 import System.FilePath
@@ -201,7 +198,7 @@ withPlatform :: WindowTitle -> WindowSize -> (PlatformBackend -> IO ()) -> IO ()
 #if defined(USE_SGE)
 withPlatform = withSGEPlatform
 #else
-withPlatform = withSDLPlatform
+withPlatform = withSdlPlatform
 #endif
 
 wrenchPlay :: Platform p =>

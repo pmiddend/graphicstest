@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE NoImplicitPrelude #-}
-module Wrench.SDL2AudioLoader(sdl2LoadWave) where
+module Wrench.Backends.Sdl.Sdl2AudioLoader(sdl2LoadWave) where
 
 import Graphics.UI.SDL.Audio(loadWAV)
 import Graphics.UI.SDL.Types(AudioSpec(..),AudioFormat)

@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TypeFamilies               #-}
 
-module Wrench.SGEPlatform(
+module Wrench.Backends.Sge.SGEPlatform(
        SGEPlatform,
        withSGEPlatform
 )

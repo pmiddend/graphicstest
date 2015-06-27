@@ -3,7 +3,7 @@
 {-# LANGUAGE RankNTypes                 #-}
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TypeFamilies               #-}
-module Wrench.SDLOldPlatform where
+module Wrench.Backends.Sdl.Sdl2Platform where
 
 import           ClassyPrelude             hiding (lookup,FilePath,(</>),Vector)
 import           Control.Lens              ((^.))
@@ -29,7 +29,7 @@ import           Wrench.Platform
 import           Wrench.AL2D.AlBuffer
 import           Wrench.AL2D.AlSource
 import qualified Wrench.AL2D.AlHelper as AL
-import           Wrench.SDL2AudioLoader
+import           Wrench.Backends.Sdl.Sdl2AudioLoader
 import           Wrench.Rectangle
 import Foreign.C.String(withCStringLen)
 import Foreign.Ptr(nullPtr,Ptr)
@@ -138,8 +138,8 @@ sizeToPoint :: SDLT.Size -> Point
 sizeToPoint (SDLT.Size w h) = V2 (fromIntegral w) (fromIntegral h)
 -}
 
-withSDLPlatform :: WindowTitle -> WindowSize -> (SDLPlatform -> IO ()) -> IO ()
-withSDLPlatform windowTitle windowSize cb =
+withSdlPlatform :: WindowTitle -> WindowSize -> (SDLPlatform -> IO ()) -> IO ()
+withSdlPlatform windowTitle windowSize cb =
   withFontInit $
     withImgInit $
       withWindow windowSize (unpackWindowTitle windowTitle) $ \window -> do
