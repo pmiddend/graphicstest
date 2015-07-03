@@ -10,6 +10,7 @@ import           Control.Lens              ((^.))
 import           Control.Lens.Getter       (Getter, to)
 import           Control.Lens.Iso          (Iso', from, iso)
 import Foreign.ForeignPtr(withForeignPtr)
+import Data.Bits
 import Foreign.Ptr(castPtr)
 import           Control.Lens.TH           (makeLenses)
 import qualified Data.Text                 as T
@@ -95,7 +96,11 @@ fromSdlEvent = to fromSdlEvent'
                          | k == SDLEnum.SDLK_DOWN = Keysym.Down
                          | k == SDLEnum.SDLK_LEFT = Keysym.Left
                          | k == SDLEnum.SDLK_RIGHT = Keysym.Right
-        fromSdlKeycode _ = error "Unknown keycode"
+                         | k == SDLEnum.SDLK_RIGHT = Keysym.Right
+                         | k == SDLEnum.SDLK_LGUI = Keysym.LeftGUI
+                         | k == SDLEnum.SDLK_LSHIFT = Keysym.LeftShift
+                         | k == SDLEnum.SDLK_SPACE = Keysym.Space
+        fromSdlKeycode k = error $ "Unknown keycode, normal " <> show k <> ", scancode " <> show (k .&. (complement (1 `shift` 30)))
 
 setRenderDrawColor :: SDLT.Renderer -> Color -> IO ()
 setRenderDrawColor renderer c = do
