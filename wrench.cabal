@@ -61,6 +61,8 @@ library
                      , Wrench.KeyMovement
                      , Wrench.Event
                      , Wrench.ImageParser
+                     , Wrench.RenderTargetFps
+                     , Wrench.RenderBlockMode
                      , Wrench.Animation
                      , Wrench.AnimMap
                      , Wrench.AnimId
@@ -107,6 +109,31 @@ library
       other-modules:     Wrench.Backends.Sdl.Sdl2AudioLoader
 
   -- hs-source-dirs:
+  default-language:    Haskell2010
+  default-extensions: NoImplicitPrelude
+                    , OverloadedStrings
+  ghc-options: -Wall
+
+executable example_time
+  main-is:             Time.hs
+  hs-source-dirs:      examples
+  -- other-extensions:
+  build-depends:       base >=4.7 && <4.9
+                     , wrench
+                     , classy-prelude
+  default-language:    Haskell2010
+  default-extensions: NoImplicitPrelude
+                    , OverloadedStrings
+  ghc-options: -Wall
+
+executable example_monadgame
+  main-is:             MonadGame.hs
+  hs-source-dirs:      examples
+  -- other-extensions:
+  build-depends:       base >=4.7 && <4.9
+                     , wrench
+                     , classy-prelude
+                     , lens
   default-language:    Haskell2010
   default-extensions: NoImplicitPrelude
                     , OverloadedStrings

@@ -36,7 +36,7 @@ main =
   withPlatform (WindowTitle "window title") DynamicWindowSize $ \p ->
     wrenchPlay
         p
-        (MediaPath "media")
+        (MediaPath "media/images")
         (BackgroundColor (Just colorsWhite))
         initialWorld
         (StepsPerSecond 1)

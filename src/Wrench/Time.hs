@@ -4,6 +4,7 @@ module Wrench.Time(
     TimeDelta
   , TimeTicks
   , tickDelta
+  , threadDelay
   , getTicks
   , fromSeconds
   , toSeconds
@@ -14,6 +15,7 @@ module Wrench.Time(
 
 import           System.Clock (Clock (Monotonic), TimeSpec (TimeSpec), getTime)
 import ClassyPrelude
+import qualified Control.Concurrent as CC
 
 newtype TimeDelta = TimeDelta { _timeDelta :: Double } deriving(Show,Num,Eq,Ord)
 newtype TimeTicks = TimeTicks { _timeTicks :: Word64 } deriving(Show,Num,Eq,Ord)
@@ -42,6 +44,9 @@ fromMilliseconds = TimeDelta . (/ 1000)
 toMilliseconds :: TimeDelta -> Double
 toMilliseconds (TimeDelta t) = t * 1000
 
+toMicroseconds :: TimeDelta -> Double
+toMicroseconds (TimeDelta t) = t * 1000 * 1000
+
 toSeconds :: TimeDelta -> Double
 toSeconds (TimeDelta t) = t
 
@@ -49,3 +54,6 @@ getTicks :: IO TimeTicks
 getTicks = do
   (TimeSpec s ns) <- getTime Monotonic
   return $ tickSeconds s + tickNanoSeconds (fromIntegral ns)
+
+threadDelay :: MonadIO m => TimeDelta -> m ()
+threadDelay t = liftIO (CC.threadDelay (floor (toMicroseconds t)))

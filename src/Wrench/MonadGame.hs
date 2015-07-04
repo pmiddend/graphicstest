@@ -18,6 +18,7 @@ import           Wrench.Animation
 import           Wrench.AnimId
 import           Wrench.Color
 import           Wrench.Engine
+import           Wrench.RenderBlockMode
 import           Wrench.AudioData
 import           Wrench.ImageData
 import System.FilePath
@@ -68,6 +69,8 @@ data GameData p = GameData {
   , gdTimeDelta    :: !TimeDelta
   , gdKeydowns     :: !Keydowns
   , gdFont         :: P.PlatformFont p
+  , gdRenderBlockMode :: !RenderBlockMode
+  , gdLastRender :: !TimeTicks
   }
 
 newtype GameDataM p a = GameDataM {
@@ -145,6 +148,15 @@ instance Platform p => MonadGame (GameDataM p) where
     bg <- gets gdBackgroundColor
     font <- gets gdFont
     liftIO $ wrenchRender p sf font bg picture
+    rbm <- gets gdRenderBlockMode
+    case rbm of
+      RenderAndReturn -> return ()
+      RenderAndWait fps -> do
+        lastRender <- gets gdLastRender
+        newTicks <- liftIO getTicks
+        modify (\oldState -> oldState { gdLastRender = newTicks })
+        let waitTime = fromSeconds (1/(fromIntegral fps)) - (newTicks `tickDelta` lastRender)
+        when (waitTime > 0) (threadDelay waitTime)
   glookupAnim aid = do
     anims <- gets gdAnims
     return (aid `lookup` anims)
@@ -160,8 +172,8 @@ processKeydown _ = id
 processKeydowns :: Keydowns -> [Event] -> Keydowns
 processKeydowns = foldr processKeydown
 
-runGame :: FilePath -> P.WindowTitle -> P.WindowSize -> Maybe Color -> GameDataM PlatformBackend () -> IO ()
-runGame mediaDir title size bgColor action = withPlatform title size $ do
+runGame :: FilePath -> P.WindowTitle -> P.WindowSize -> Maybe Color -> RenderBlockMode -> GameDataM PlatformBackend () -> IO ()
+runGame mediaDir title size bgColor renderBlockMode action = withPlatform title size $ do
   \platform -> do
     (images, anims) <- readMediaFiles (P.loadImage platform) (mediaDir </> "images")
     sounds <- readAudioFiles (P.loadAudio platform) (mediaDir </> "sounds")
@@ -179,6 +191,8 @@ runGame mediaDir title size bgColor action = withPlatform title size $ do
         , gdTimeDelta = fromSeconds 0
         , gdKeydowns = mempty
         , gdFont = font
+        , gdRenderBlockMode = renderBlockMode
+        , gdLastRender = ticks
         }
     r <- getStdGen
     evalStateT (evalRandT (runGameData action) r) gameData
