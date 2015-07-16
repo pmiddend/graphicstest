@@ -155,7 +155,6 @@ import Wrench.MouseButtonMovement (
 
 import Wrench.Platform (
          Platform(..)
-       , WindowSize(..)
        , WindowTitle(..)
        , spriteDestRect
        , spriteImage
@@ -179,6 +178,10 @@ import Wrench.Rectangle (
          Rectangle
        , rectLeftTop
        , rectDimensions
+       )
+
+import Wrench.WindowSize (
+         WindowSize(..)
        )
 
 data SGEPlatform = SGEPlatform {
