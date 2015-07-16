@@ -39,6 +39,7 @@ library
   exposed-modules:     Wrench.Angular
                      , Wrench.Color
                      , Wrench.Engine
+                     , Wrench.WindowSize
                      , Wrench.AudioData
                      , Wrench.MonadGame
                      , Wrench.FloatType
@@ -79,7 +80,6 @@ library
                      , monad-loops
                      , clock
                      , transformers
-                     , reactive-banana
                      , MonadRandom
                      , random
                      , scientific
@@ -135,6 +135,19 @@ executable example_monadgame
                      , wrench
                      , classy-prelude
                      , lens
+  default-language:    Haskell2010
+  default-extensions: NoImplicitPrelude
+                    , OverloadedStrings
+  ghc-options: -Wall
+
+executable example_frp
+  main-is:             Frp.hs
+  hs-source-dirs:      examples
+  -- other-extensions:
+  build-depends:       base >=4.7 && <4.9
+                     , wrench
+                     , reactive-banana
+                     , classy-prelude
   default-language:    Haskell2010
   default-extensions: NoImplicitPrelude
                     , OverloadedStrings

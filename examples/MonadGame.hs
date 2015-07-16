@@ -5,6 +5,7 @@ import           Wrench.MonadGame
 import           Wrench.RenderBlockMode
 import           Wrench.Engine
 import           Wrench.Picture
+import           Wrench.WindowSize
 import           Wrench.Point
 import           Wrench.KeyMovement
 import           Wrench.Event

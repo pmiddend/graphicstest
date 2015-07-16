@@ -18,6 +18,7 @@ import           Wrench.Animation
 import           Wrench.AnimId
 import           Wrench.Color
 import           Wrench.Engine
+import           Wrench.WindowSize
 import           Wrench.RenderBlockMode
 import           Wrench.AudioData
 import           Wrench.ImageData
@@ -172,7 +173,7 @@ processKeydown _ = id
 processKeydowns :: Keydowns -> [Event] -> Keydowns
 processKeydowns = foldr processKeydown
 
-runGame :: FilePath -> P.WindowTitle -> P.WindowSize -> Maybe Color -> RenderBlockMode -> GameDataM PlatformBackend () -> IO ()
+runGame :: FilePath -> P.WindowTitle -> WindowSize -> Maybe Color -> RenderBlockMode -> GameDataM PlatformBackend () -> IO ()
 runGame mediaDir title size bgColor renderBlockMode action = withPlatform title size $ do
   \platform -> do
     (images, anims) <- readMediaFiles (P.loadImage platform) (mediaDir </> "images")

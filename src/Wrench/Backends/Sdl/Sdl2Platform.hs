@@ -24,6 +24,7 @@ import           Wrench.Color
 import           Wrench.Event
 import           Wrench.MouseButtonMovement
 import           Wrench.MouseButton
+import           Wrench.WindowSize
 import           Wrench.KeyMovement
 import qualified Wrench.Keysym             as Keysym
 import           Wrench.Platform

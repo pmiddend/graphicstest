@@ -28,6 +28,7 @@ import           Linear.V3                 (V3 (..))
 import           Numeric.Lens              (dividing)
 import           Wrench.Angular
 import           Wrench.Color
+import           Wrench.WindowSize
 import           Wrench.Event
 import           Wrench.Rectangle
 import           Wrench.FloatType          (FloatType)

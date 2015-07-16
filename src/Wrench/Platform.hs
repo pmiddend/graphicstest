@@ -15,7 +15,6 @@ import Control.Lens.TH
 import System.FilePath
 
 newtype WindowTitle = WindowTitle { unpackWindowTitle :: T.Text } deriving(IsString)
-data WindowSize = DynamicWindowSize | ConstantWindowSize Int Int
 type SrcRect = Rectangle
 type DestRect = Rectangle
 type FontSize = Int

@@ -5,6 +5,7 @@ import Wrench.Color
 import Wrench.BitmapFont.Render
 import Wrench.BitmapFont.RenderResult
 import Wrench.Event
+import Wrench.WindowSize
 import Wrench.Engine
 import Wrench.ImageData
 import System.FilePath

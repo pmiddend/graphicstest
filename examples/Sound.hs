@@ -2,6 +2,7 @@ module Main where
 
 import           Wrench.Engine
 import           Wrench.Platform
+import           Wrench.WindowSize
 import           Wrench.PlayMode
 import ClassyPrelude
 

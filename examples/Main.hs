@@ -4,6 +4,7 @@ import           Linear.V2
 import           Wrench.Color
 import           Wrench.Engine
 import           Wrench.Picture
+import           Wrench.WindowSize
 import           Wrench.Point
 import           Wrench.KeyMovement
 import           Wrench.Event
