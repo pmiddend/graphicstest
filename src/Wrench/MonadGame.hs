@@ -14,12 +14,14 @@ import           Control.Monad.Writer.Lazy (WriterT)
 import qualified Data.Set                   as S
 import           ClassyPrelude hiding((</>),FilePath)
 import Data.Maybe(fromJust)
+import Control.Lens((^.))
 import           Wrench.Animation
 import           Wrench.AnimId
 import           Wrench.Color
 import           Wrench.Engine
 import           Wrench.WindowSize
 import           Wrench.RenderBlockMode
+import Wrench.MediaData
 import           Wrench.AudioData
 import           Wrench.ImageData
 import System.FilePath
@@ -176,16 +178,16 @@ processKeydowns = foldr processKeydown
 runGame :: FilePath -> P.WindowTitle -> WindowSize -> Maybe Color -> RenderBlockMode -> GameDataM PlatformBackend () -> IO ()
 runGame mediaDir title size bgColor renderBlockMode action = withPlatform title size $ do
   \platform -> do
-    (images, anims) <- readMediaFiles (P.loadImage platform) (mediaDir </> "images")
+    mediaData <- readMediaFiles (P.loadImage platform) (mediaDir </> "images")
     sounds <- readAudioFiles (P.loadAudio platform) (mediaDir </> "sounds")
     ticks <- getTicks
     font <- P.loadFont platform (mediaDir </> "fonts" </> "stdfont.ttf") 15
     let
       gameData = GameData {
-          gdSurfaces = images
+          gdSurfaces = mediaData ^. mdSurfaces
         , gdSounds = sounds
         , gdSources = []
-        , gdAnims = anims
+        , gdAnims = mediaData ^. mdAnims
         , gdPlatform = platform
         , gdCurrentTicks = ticks
         , gdBackgroundColor = bgColor

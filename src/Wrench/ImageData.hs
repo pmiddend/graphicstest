@@ -6,15 +6,18 @@ module Wrench.ImageData(
   ImageId,
   ImageMap,
   AnimMap,
-  readMediaFiles,
   animFrameSwitch,
   animFrames,
   SurfaceMap,
   findSurfaceUnsafe,
-  SurfaceData
+  SurfaceData,
+  ImageDescFile,
+  imageDescToSurface,
+  ImageLoadFunction,
+  getDescFilesInDir,
+  imageDescToMaps
   ) where
 
-import qualified Data.Map.Strict           as M
 import           ClassyPrelude hiding(FilePath,(</>))
 import qualified Data.Text as T
 import System.FilePath
@@ -25,6 +28,7 @@ import Wrench.ImageId
 import Wrench.AnimMap
 import Wrench.Animation
 import Wrench.ImageMap
+import qualified Data.Map.Strict           as M
 
 type ImageDescFile = FilePath
 
@@ -40,17 +44,6 @@ findSurfaceUnsafe sm im = fromMaybe (error $ "Cannot find image \"" <> T.unpack 
 -- Holt alle "Descriptorfiles" (also die mit .txt enden) aus dem Directory
 getDescFilesInDir :: (Functor m,MonadIO m) => FilePath -> m [ImageDescFile]
 getDescFilesInDir dir = getFilesWithExtInDir dir ".txt"
-
-readMediaFiles :: forall a m.(Applicative m, MonadIO m) => ImageLoadFunction m a -> FilePath -> m (SurfaceMap a,AnimMap)
-readMediaFiles loadImage fp = (,) <$> (foldr M.union M.empty <$> smaps) <*> (foldr M.union M.empty <$> amaps)
-  where readSingle :: ImageDescFile -> m (SurfaceMap a,AnimMap)
-        readSingle f = imageDescToSurface loadImage f >>= imageDescToMaps f
-        maps :: m [(SurfaceMap a,AnimMap)]
-        maps = getDescFilesInDir fp >>= traverse readSingle
-        smaps :: m [SurfaceMap a]
-        smaps = map fst <$> maps
-        amaps :: m [AnimMap]
-        amaps = map snd <$> maps
 
 imageDescToSurface :: ImageLoadFunction m a -> ImageDescFile -> m a
 imageDescToSurface loadImage x = loadImage (replaceExtension x "png")

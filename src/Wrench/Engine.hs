@@ -3,16 +3,11 @@
 {-# LANGUAGE RankNTypes                 #-}
 {-# LANGUAGE TemplateHaskell            #-}
 module Wrench.Engine(
-    wrenchPlay
-  , Event(..)
+    Event(..)
   , ViewportSize
   , withPlatform
-  , MediaPath(..)
   , BackgroundColor(..)
   , noBackgroundColor
-  , StepsPerSecond(..)
-  , ToPictureHandler(..)
-  , EventHandler(..)
   , ImageSizeGetter
   , wrenchRender
   , PlatformBackend
@@ -45,8 +40,6 @@ import           Wrench.Backends.Sge.SGEPlatform
 import           Wrench.Backends.Sdl.Sdl2Platform
 #endif
 import           ClassyPrelude hiding(FilePath,(</>))
-import System.FilePath
-import           Wrench.Time
 import Wrench.List(concatMapM)
 
 -- TODO: Use Linear.Matrix.identity
@@ -54,16 +47,10 @@ eye3 :: Num a => M33 a
 eye3 = V3 (V3 1 0 0) (V3 0 1 0) (V3 0 0 1)
 
 type ImageSizeGetter = SpriteIdentifier -> Rectangle
-newtype MediaPath = MediaPath { unpackMediaPath :: FilePath }
 newtype BackgroundColor = BackgroundColor { unpackBackgroundColor :: Maybe Color }
-type ToPictureHandlerImpl world = ViewportSize -> world -> Picture
-newtype ToPictureHandler world = ToPictureHandler { unpackToPictureHandler :: ImageSizeGetter -> ToPictureHandlerImpl world }
-newtype EventHandler world = EventHandler { unpackEventHandler :: Event -> world -> world }
 
 noBackgroundColor :: BackgroundColor
 noBackgroundColor = BackgroundColor Nothing
-
-newtype StepsPerSecond = StepsPerSecond { unpackStepsPerSecond :: Int }
 
 type ViewportSize = Point
 
@@ -149,46 +136,6 @@ wrenchRender platform surfaceMap font backgroundColor outerPicture = do
   mapM_ (executeOperationBatch platform) (groupBy equalOperation operations)
   renderFinish platform
 
-data MainLoopContext p world = MainLoopContext { _mlPlatform        :: p
-                                               , _mlSurfaceData     :: SurfaceMap (PlatformImage p)
-                                               , _mlFont            :: PlatformFont p
-                                               , _mlBackgroundColor :: Maybe Color
-                                               , _mlStepsPerSecond  :: Int
-                                               , _mlWorldToPicture  :: ViewportSize -> world -> Picture
-                                               , _mlEventHandler    :: Event -> world -> world
-                                               }
-
-
-$(makeLenses ''MainLoopContext)
-
-type PreviousTime = TimeTicks
-type SinceLastSimulation = TimeDelta
-
-splitDelta :: TimeDelta -> TimeDelta -> (Int,TimeDelta)
-splitDelta maxDelta n = let iterations = floor $ toSeconds n / toSeconds maxDelta
-                        in (iterations,n - fromIntegral iterations * maxDelta)
-
-mainLoop :: Platform p => MainLoopContext p world -> PreviousTime -> SinceLastSimulation -> world -> IO ()
-mainLoop context prevTime prevDelta world = do
-  let platform = context ^. mlPlatform
-  mappedEvents <- pollEvents platform
-  unless (any isQuitEvent mappedEvents) $ do
-    newTime <- getTicks
-    let timeDelta = newTime `tickDelta` prevTime
-        maxDelta = fromSeconds . recip . fromIntegral $ context ^. mlStepsPerSecond
-        (simulationSteps,newDelta) = splitDelta maxDelta (timeDelta + prevDelta)
-    let newWorld = foldr (context ^. mlEventHandler) world (mappedEvents <> replicate simulationSteps (Tick maxDelta))
-    -- TODO: Delete if finished
-    --let newWorld = foldr (context ^. mlSimulationStep) worldAfterEvents (replicate simulationSteps maxDelta :: [TimeDelta])
-    ws <- viewportSize platform
-    wrenchRender
-        platform
-        (context ^. mlSurfaceData)
-        (context ^. mlFont)
-        (context ^. mlBackgroundColor)
-        ((context ^. mlWorldToPicture) ws world)
-    mainLoop context newTime newDelta newWorld
-
 #if defined(USE_SGE)
 type PlatformBackend = SGEPlatform
 #else
@@ -201,27 +148,3 @@ withPlatform = withSGEPlatform
 #else
 withPlatform = withSdlPlatform
 #endif
-
-wrenchPlay :: Platform p =>
-              p ->
-              MediaPath ->
-              BackgroundColor ->
-              world ->
-              StepsPerSecond ->
-              ToPictureHandler world ->
-              EventHandler world ->
-              IO ()
-wrenchPlay platform mediaPath backgroundColor initialWorld stepsPerSecond worldToPicture eventHandler = do
-  time <- getTicks
-  surfaceData <- readMediaFiles (loadImage platform) (unpackMediaPath mediaPath)
-  let imageSizeGetter spriteName = snd (fst surfaceData `findSurfaceUnsafe` spriteName)
-  font <- loadFont platform (unpackMediaPath mediaPath </> "stdfont.ttf") 15
-  let loopContext = MainLoopContext
-                    platform
-                    (fst surfaceData)
-                    font
-                    (unpackBackgroundColor backgroundColor)
-                    (unpackStepsPerSecond stepsPerSecond)
-                    (unpackToPictureHandler worldToPicture imageSizeGetter)
-                    (unpackEventHandler eventHandler)
-  mainLoop loopContext time 0 initialWorld

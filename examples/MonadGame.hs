@@ -6,13 +6,10 @@ import           Wrench.RenderBlockMode
 import           Wrench.Engine
 import           Wrench.Picture
 import           Wrench.WindowSize
-import           Wrench.Point
-import           Wrench.KeyMovement
 import           Wrench.Event
-import           Wrench.Platform
 import qualified Wrench.Keysym as Key
 import ClassyPrelude
-import Control.Lens(has,traverse,filtered)
+import Control.Lens(has,filtered)
 
 spaceKeyPressed :: Traversable t => t Event -> Bool
 --spaceKeyPressed events = has (events ^.. traverse . _Keyboard . keySym . filtered (== Space))

@@ -1,26 +1,37 @@
+{-# LANGUAGE RankNTypes #-}
 module Main where
 
 import ClassyPrelude
 import Wrench.Picture
 import Reactive.Banana.Combinators
 import Reactive.Banana.Frameworks
-import Control.Concurrent(forkIO)
-import Wrench.Time(threadDelay,fromSeconds,getTicks)
+import Reactive.Banana.Switch
+import Wrench.Time
+import Wrench.Engine(withPlatform)
+import Wrench.Platform
+import Wrench.WindowSize
+import Wrench.MediaData
+import Wrench.Engine
+import Wrench.Color
+import Control.Lens((^.))
 
-setupNetwork tickAddHandler = do
+setupNetwork platform surfaces tickAddHandler eventAddHandler = do
   etick <- fromAddHandler tickAddHandler
-  reactimate $ print <$> etick
+  eevent <- fromAddHandler eventAddHandler
+  reactimate $ (\_ -> wrenchRender platform surfaces (error "no font specified") (Just colorsBlack) mempty) <$> etick
+  reactimate $ (\_ -> putStrLn "Ah, an event") <$> eevent
 
-wrenchFrpRender :: Behavior t Picture -> IO ()
-wrenchFrpRender pictureBehavior = do
-  (tickAddHandler,tickFire) <- newAddHandler
-  compiledNetwork <- compile $ setupNetwork tickAddHandler
-  actuate compiledNetwork
-  --tid <- forkIO (forever (threadDelay (fromSeconds 1) >> getTicks >>= tickFire))
-  forever (threadDelay (fromSeconds 1) >> getTicks >>= tickFire)
-
-pictureHandler :: Behavior t Picture
-pictureHandler = undefined
-
+main :: IO ()
 main = do
-  withPlatform "test" WindowSizeDynamic $ \
+  withPlatform (WindowTitle "test") DynamicWindowSize $ \platform -> do
+    (tickAddHandler,tickFire) <- newAddHandler
+    (eventAddHandler,eventFire) <- newAddHandler
+    md <- liftIO (readMediaFiles (loadImage platform) "media")
+    compiledNetwork <- compile (setupNetwork platform (md ^. mdSurfaces) tickAddHandler eventAddHandler)
+    actuate compiledNetwork
+    forever $ do
+      ticks <- getTicks
+      events <- pollEvents platform
+      mapM_ eventFire events
+      tickFire ticks
+      threadDelay (fromSeconds (1/30))
