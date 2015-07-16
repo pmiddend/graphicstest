@@ -148,6 +148,7 @@ executable example_frp
   build-depends:       base >=4.7 && <4.9
                      , wrench
                      , reactive-banana
+                     , linear
                      , classy-prelude
                      , lens
   default-language:    Haskell2010

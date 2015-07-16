@@ -13,11 +13,19 @@ import Wrench.WindowSize
 import Wrench.MediaData
 import Wrench.Engine
 import Wrench.Color
-import Control.Lens((^.))
+import Control.Lens((^.),has,only,(^?!))
+import Linear.V2
+import Wrench.Event
+import Wrench.KeyMovement
+
+initialCarPosition = V2 100 100
+
+keyDownSyms event = (^?! _Keyboard . keySym) <$> (filterE (has (_Keyboard . keyMovement . only KeyDown)) event)
 
 setupNetwork platform surfaces tickAddHandler eventAddHandler = do
   etick <- fromAddHandler tickAddHandler
   eevent <- fromAddHandler eventAddHandler
+  --let carPosX = accumB 100 (1 <$ keyDownSyms eevent)
   reactimate $ (\_ -> wrenchRender platform surfaces (error "no font specified") (Just colorsBlack) mempty) <$> etick
   reactimate $ (\_ -> putStrLn "Ah, an event") <$> eevent
 
