@@ -79,6 +79,7 @@ library
                      , monad-loops
                      , clock
                      , transformers
+                     , reactive-banana
                      , MonadRandom
                      , random
                      , scientific
