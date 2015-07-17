@@ -1,3 +1,7 @@
+{-# LANGUAGE CPP #-}
+#ifndef USE_OPENAL
+module Wrench.AL2D.AlHelper where
+#else
 module Wrench.AL2D.AlHelper(useDefaultDevice,withDevice,withContext,withDefaultAl,genObject,genBuffer,genSource,bufferDataFromAudioFile,bufferToSource,playSource,bufferFromFile,sourceIsStopped,freeSource,freeBuffer) where
 
 import Sound.ALC.Device(alcOpenDevice,alcCloseDevice)
@@ -158,3 +162,4 @@ playSource pm source = do
   alSourcePlay (alSourceImpl source)
   where convertPlayMode PlayModeOnce = 0
         convertPlayMode PlayModeLooping = 1
+#endif

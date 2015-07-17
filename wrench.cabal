@@ -29,7 +29,7 @@ flag sdl
 
 flag openal
   Description: Use openal as audio backend
-  Default: True
+  Default: False
 
 library
   hs-source-dirs:      src
@@ -90,7 +90,7 @@ library
                      , resourcet
                      , vector
   if flag(openal)
-    build-depends:     al, byteorder
+    build-depends:     al
     other-modules:     Wrench.AL2D.AlBufferFormat
                      , Wrench.AL2D.AlBuffer
                      , Wrench.AL2D.AlSource
@@ -106,6 +106,7 @@ library
     if flag(sdl)
       build-depends:     sdl2
                        , JuicyPixels
+                       , byteorder
       cpp-options:       -DUSE_SDL
       other-modules:     Wrench.Backends.Sdl.Sdl2Platform
       other-modules:     Wrench.Backends.Sdl.Sdl2AudioLoader

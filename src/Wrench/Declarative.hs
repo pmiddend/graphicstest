@@ -24,6 +24,8 @@ import           Wrench.Engine
 
 newtype StepsPerSecond = StepsPerSecond { unpackStepsPerSecond :: Int }
 
+type ImageSizeGetter = SpriteIdentifier -> Rectangle
+
 newtype MediaPath = MediaPath { unpackMediaPath :: FilePath }
 
 newtype EventHandler world = EventHandler { unpackEventHandler :: Event -> world -> world }

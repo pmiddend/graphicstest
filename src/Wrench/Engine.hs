@@ -46,7 +46,6 @@ import Wrench.List(concatMapM)
 eye3 :: Num a => M33 a
 eye3 = V3 (V3 1 0 0) (V3 0 1 0) (V3 0 0 1)
 
-type ImageSizeGetter = SpriteIdentifier -> Rectangle
 newtype BackgroundColor = BackgroundColor { unpackBackgroundColor :: Maybe Color }
 
 noBackgroundColor :: BackgroundColor
