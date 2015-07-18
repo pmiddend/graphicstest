@@ -3,7 +3,7 @@
 module Main where
 
 import           ClassyPrelude
-import           Control.Lens                (has, only, (^.), (^?!))
+import           Control.Lens                (has, only, (^.), (^?), (^?!))
 import           Linear.V2
 import qualified Reactive.Banana.Combinators as RBC
 import           Reactive.Banana.Frameworks
@@ -13,24 +13,32 @@ import           Wrench.Engine
 import           Wrench.Event
 import           Wrench.ImageData
 import           Wrench.KeyMovement
+import qualified Wrench.Keysym               as KS
 import           Wrench.MediaData
 import           Wrench.Picture
 import           Wrench.Platform
+import           Wrench.Point
 import           Wrench.Time
 import           Wrench.WindowSize
 
 initialCarPosition = V2 100 100
 
-keyDownSyms event = (^?! _Keyboard . keySym) <$> (RBC.filterE (has (_Keyboard . keyMovement . only KeyDown)) event)
+eventToPosChange :: RBC.Event t Event -> RBC.Event t Point
+eventToPosChange event = RBC.filterJust ((\e -> (e ^? _Keyboard) >>= eventToPosChange') <$> event)
+  where eventToPosChange' (KeyboardEvent{_keyMovement=KeyDown,_keySym=KS.Left}) = Just (V2 (-10) 0)
+        eventToPosChange' (KeyboardEvent{_keyMovement=KeyDown,_keySym=KS.Right}) = Just (V2 10 0)
+        eventToPosChange' (KeyboardEvent{_keyMovement=KeyDown,_keySym=KS.Up}) = Just (V2 0 (-10))
+        eventToPosChange' (KeyboardEvent{_keyMovement=KeyDown,_keySym=KS.Down}) = Just (V2 0 10)
+        eventToPosChange' _ = Nothing
 
 setupNetwork :: forall t p. Frameworks t => Platform p => p -> SurfaceMap (PlatformImage p) -> AddHandler TimeTicks -> AddHandler Event -> Moment t ()
 setupNetwork platform surfaces tickAddHandler eventAddHandler = do
   etick <- fromAddHandler tickAddHandler
   eevent <- fromAddHandler eventAddHandler
   let
-    cumulatedPositionBehavior :: RBC.Behavior t Int
-    cumulatedPositionBehavior = RBC.accumB 100 ((+10) <$ keyDownSyms eevent)
-    currentPictureEvent = ((\pos -> (V2 (fromIntegral pos) 100) `pictureTranslated` (pictureSpriteCentered "car")) <$> cumulatedPositionBehavior) RBC.<@ etick
+    cumulatedPositionBehavior :: RBC.Behavior t Point
+    cumulatedPositionBehavior = RBC.accumB initialCarPosition ((+) <$> eventToPosChange eevent)
+    currentPictureEvent = ((`pictureTranslated` (pictureSpriteCentered "car")) <$> cumulatedPositionBehavior) RBC.<@ etick
   --let carPosX = accumB 100 (1 <$ keyDownSyms eevent)
   reactimate $ (wrenchRender platform surfaces (error "no font specified") (Just colorsBlack)) <$> currentPictureEvent
 --  reactimate $ (\v -> putStrLn $ "Ah, an event: " <> pack (show v) ) <$> cumulatedPosition
