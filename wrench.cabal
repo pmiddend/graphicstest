@@ -66,6 +66,8 @@ library
                      , Wrench.RenderTargetFps
                      , Wrench.RenderBlockMode
                      , Wrench.Animation
+                     , Wrench.Declarative
+                     , Wrench.ViewportSize
                      , Wrench.AnimMap
                      , Wrench.AnimId
                      , Wrench.PlayMode
@@ -109,7 +111,8 @@ library
                        , byteorder
       cpp-options:       -DUSE_SDL
       other-modules:     Wrench.Backends.Sdl.Sdl2Platform
-      other-modules:     Wrench.Backends.Sdl.Sdl2AudioLoader
+                       , Wrench.Backends.Sdl.Sdl2AudioLoader
+                       , Wrench.Backends.Sdl.Sdl2AudioFile
 
   -- hs-source-dirs:
   default-language:    Haskell2010

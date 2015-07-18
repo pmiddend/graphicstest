@@ -2,7 +2,7 @@
 #ifndef USE_OPENAL
 module Wrench.AL2D.AlHelper where
 #else
-module Wrench.AL2D.AlHelper(useDefaultDevice,withDevice,withContext,withDefaultAl,genObject,genBuffer,genSource,bufferDataFromAudioFile,bufferToSource,playSource,bufferFromFile,sourceIsStopped,freeSource,freeBuffer) where
+module Wrench.AL2D.AlHelper(useDefaultDevice,withDevice,withContext,withDefaultAl,genObject,genBuffer,genSource,bufferDataFromAudioFile,bufferToSource,playSource,bufferFromFile,sourceIsStopped,freeSource,freeBuffer,AlcContextPtr,AlcDevicePtr) where
 
 import Sound.ALC.Device(alcOpenDevice,alcCloseDevice)
 import Sound.ALC.Context(alcMakeContextCurrent,alcCreateContext,alcDestroyContext)

@@ -5,14 +5,13 @@ module Wrench.BitmapFont.Render(
 
 import Wrench.BitmapFont.RenderResult
 import ClassyPrelude hiding(last)
-import Wrench.Point
 import Wrench.FloatType
 import Wrench.SpriteIdentifier
 import Wrench.Picture
 import Wrench.Rectangle
 import Wrench.ImageData
 import Linear.V2
-import Control.Lens((^?!),at,(^.),ix,(^..),(^.),_2)
+import Control.Lens((^?!),(^.),ix,(^.),_2)
 import Data.List(foldl,last)
 
 charToText :: Char -> Text

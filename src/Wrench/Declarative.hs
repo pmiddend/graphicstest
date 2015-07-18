@@ -5,26 +5,37 @@
 module Wrench.Declarative(
     wrenchPlay
   , MediaPath(..)
+  , BackgroundColor(..)
+  , ImageSizeGetter
+  , noBackgroundColor
   , EventHandler(..)
   , StepsPerSecond(..)
   , ToPictureHandler(..)) where
 
-import           Control.Lens              ((^.))
-import           Control.Lens.TH           (makeLenses)
+import           ClassyPrelude           hiding (FilePath, (</>))
+import           Control.Lens            ((^.))
+import           Control.Lens.TH         (makeLenses)
+import           System.FilePath
 import           Wrench.Color
+import           Wrench.Engine
 import           Wrench.Event
-import           Wrench.MediaData
 import           Wrench.ImageData
 import           Wrench.Internal.Picture
+import           Wrench.MediaData
 import           Wrench.Platform
-import           ClassyPrelude hiding(FilePath,(</>))
-import System.FilePath
+import           Wrench.Rectangle
+import           Wrench.SpriteIdentifier
 import           Wrench.Time
-import           Wrench.Engine
+import           Wrench.ViewportSize
 
 newtype StepsPerSecond = StepsPerSecond { unpackStepsPerSecond :: Int }
 
 type ImageSizeGetter = SpriteIdentifier -> Rectangle
+
+newtype BackgroundColor = BackgroundColor { unpackBackgroundColor :: Maybe Color }
+
+noBackgroundColor :: BackgroundColor
+noBackgroundColor = BackgroundColor Nothing
 
 newtype MediaPath = MediaPath { unpackMediaPath :: FilePath }
 

@@ -4,11 +4,7 @@
 {-# LANGUAGE TemplateHaskell            #-}
 module Wrench.Engine(
     Event(..)
-  , ViewportSize
   , withPlatform
-  , BackgroundColor(..)
-  , noBackgroundColor
-  , ImageSizeGetter
   , wrenchRender
   , PlatformBackend
   ) where
@@ -30,7 +26,6 @@ import           Wrench.FloatType          (FloatType)
 import           Wrench.ImageData
 import           Wrench.Internal.Picture
 import           Wrench.Platform
-import Wrench.SpriteIdentifier
 import           Wrench.Point              (Point)
 import           Wrench.RenderPositionMode
 #if defined(USE_SGE)
@@ -45,13 +40,6 @@ import Wrench.List(concatMapM)
 -- TODO: Use Linear.Matrix.identity
 eye3 :: Num a => M33 a
 eye3 = V3 (V3 1 0 0) (V3 0 1 0) (V3 0 0 1)
-
-newtype BackgroundColor = BackgroundColor { unpackBackgroundColor :: Maybe Color }
-
-noBackgroundColor :: BackgroundColor
-noBackgroundColor = BackgroundColor Nothing
-
-type ViewportSize = Point
 
 -- toV3 :: Num a => V2 a -> V3 a
 -- toV3 (V2 x y) = V3 x y 1
@@ -138,7 +126,7 @@ wrenchRender platform surfaceMap font backgroundColor outerPicture = do
 #if defined(USE_SGE)
 type PlatformBackend = SGEPlatform
 #else
-type PlatformBackend = SDLPlatform
+type PlatformBackend = SDL2Platform
 #endif
 
 withPlatform :: WindowTitle -> WindowSize -> (PlatformBackend -> IO ()) -> IO ()

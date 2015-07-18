@@ -1,58 +1,100 @@
+{-# LANGUAGE CPP                        #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE PatternSynonyms            #-}
 {-# LANGUAGE RankNTypes                 #-}
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TypeFamilies               #-}
 module Wrench.Backends.Sdl.Sdl2Platform where
 
-import           ClassyPrelude             hiding (lookup,FilePath,(</>),Vector)
-import           Control.Lens              ((^.))
-import           Control.Lens.Getter       (Getter, to)
-import           Control.Lens.Iso          (Iso', from, iso)
-import Foreign.ForeignPtr(withForeignPtr)
-import Data.Bits
-import Foreign.Ptr(castPtr)
-import           Control.Lens.TH           (makeLenses)
-import qualified Data.Text                 as T
-import qualified Graphics.UI.SDL.Types     as SDLT
-import qualified Graphics.UI.SDL.Enum     as SDLEnum
-import qualified Graphics.UI.SDL.Video     as SDLV
-import qualified Graphics.UI.SDL.Event     as SDLE
-import           Linear.V2                 (V2 (..), _x, _y)
+import           ClassyPrelude                       hiding (FilePath, Vector,
+                                                      lookup, (</>))
+import           Control.Lens                        (makeLenses)
+import           Control.Lens                        ((^.))
+import           Control.Lens.Getter                 (Getter, to)
+import           Control.Lens.Iso                    (Iso', from, iso)
+import           Data.Bits
+import qualified Data.Text                           as T
+import           Foreign.ForeignPtr                  (withForeignPtr)
+import           Foreign.Ptr                         (castPtr)
+import qualified Graphics.UI.SDL.Enum                as SDLEnum
+import qualified Graphics.UI.SDL.Event               as SDLE
+import qualified Graphics.UI.SDL.Types               as SDLT
+import qualified Graphics.UI.SDL.Video               as SDLV
+import           Linear.V2                           (V2 (..), _x, _y)
 import           Wrench.Angular
 import           Wrench.Color
 import           Wrench.Event
-import           Wrench.MouseButtonMovement
-import           Wrench.MouseButton
-import           Wrench.WindowSize
 import           Wrench.KeyMovement
-import qualified Wrench.Keysym             as Keysym
+import qualified Wrench.Keysym                       as Keysym
+import           Wrench.MouseButton
+import           Wrench.MouseButtonMovement
 import           Wrench.Platform
+import           Wrench.WindowSize
+#ifdef USE_OPENAL
 import           Wrench.AL2D.AlBuffer
+import qualified Wrench.AL2D.AlHelper                as AL
 import           Wrench.AL2D.AlSource
-import qualified Wrench.AL2D.AlHelper as AL
+#endif
+import           Codec.Picture                       (DynamicImage (..),
+                                                      Image (..), readImage)
+import           Data.Vector.Storable                (unsafeToForeignPtr0)
+import           Foreign.C.String                    (withCStringLen)
+import           Foreign.C.Types                     (CDouble (..))
+import           Foreign.Marshal.Alloc               (alloca)
+import           Foreign.Marshal.Array               (allocaArray, peekArray)
+import           Foreign.Marshal.Utils               (with)
+import           Foreign.Ptr                         (Ptr, nullPtr)
+import           Foreign.Storable                    (peek)
+import           Wrench.AudioFile
 import           Wrench.Backends.Sdl.Sdl2AudioLoader
+import           Wrench.PlayMode
 import           Wrench.Rectangle
-import Foreign.C.String(withCStringLen)
-import Foreign.Ptr(nullPtr,Ptr)
-import Foreign.Storable(peek)
-import Foreign.C.Types(CDouble(..))
-import Data.Vector.Storable(unsafeToForeignPtr0)
-import Foreign.Marshal.Alloc(alloca)
-import           Foreign.Marshal.Array (allocaArray, peekArray)
-import           Foreign.Marshal.Utils (with)
-import Codec.Picture(readImage,DynamicImage(..),Image(..))
 
-
-floored :: (RealFrac a,Integral b) => Getter a b
-floored = to floor
-
-data SDLPlatform = SDLPlatform {
+data SDL2Platform = SDL2Platform {
     _sdlpRenderer :: SDLT.Renderer
   , _sdlpWindow   :: SDLT.Window
   }
 
-$(makeLenses ''SDLPlatform)
+$(makeLenses ''SDL2Platform)
+
+#ifdef USE_OPENAL
+type AudioBufferImpl = AlBuffer
+type AudioSourceImpl = AlSource
+audioPlayBuffer :: MonadIO m => AlBuffer -> PlayMode -> m AlSource
+audioPlayBuffer b pm = do
+    source <- AL.genSource
+    AL.bufferToSource b source
+    AL.playSource pm source
+    return source
+audioFreeBuffer :: AlBuffer -> IO ()
+audioFreeBuffer = AL.freeBuffer
+audioFreeSource :: AlSource -> IO ()
+audioFreeSource = AL.freeSource
+audioBufferFromFile :: AudioFile -> IO AlBuffer
+audioBufferFromFile = AL.bufferFromFile
+audioSourceIsStopped :: AlSource -> IO Bool
+audioSourceIsStopped = AL.sourceIsStopped
+withAudio :: (AL.AlcDevicePtr -> AL.AlcContextPtr -> IO a) -> IO a
+withAudio = AL.withDefaultAl
+#else
+type AudioBufferImpl = ()
+type AudioSourceImpl = ()
+audioPlayBuffer :: Monad m => t -> t1 -> m ()
+audioPlayBuffer _ _ = return ()
+audioFreeBuffer :: Monad m => t -> m ()
+audioFreeBuffer _ = return ()
+audioFreeSource :: Monad m => t -> m ()
+audioFreeSource _ = return ()
+audioBufferFromFile :: Monad m => t -> m ()
+audioBufferFromFile _ = return ()
+audioSourceIsStopped :: Monad m => t -> m Bool
+audioSourceIsStopped _ = return True
+withAudio :: (a -> a1 -> t) -> t
+withAudio f = f (error "null backend doesn't have a context/device") (error "null backend doesn't have a context/device")
+#endif
+
+floored :: (RealFrac a,Integral b) => Getter a b
+floored = to floor
 
 toSdlRect :: Rectangle -> SDLT.Rect
 toSdlRect r = SDLT.Rect
@@ -144,19 +186,19 @@ sizeToPoint :: SDLT.Size -> Point
 sizeToPoint (SDLT.Size w h) = V2 (fromIntegral w) (fromIntegral h)
 -}
 
-withSdlPlatform :: WindowTitle -> WindowSize -> (SDLPlatform -> IO ()) -> IO ()
+withSdlPlatform :: WindowTitle -> WindowSize -> (SDL2Platform -> IO ()) -> IO ()
 withSdlPlatform windowTitle windowSize cb =
   withFontInit $
     withImgInit $
       withWindow windowSize (unpackWindowTitle windowTitle) $ \window -> do
         withRenderer window $ \renderer -> do
-          AL.withDefaultAl $ \_ _ -> do
+          withAudio $ \_ _ -> do
             case windowSize of
                 DynamicWindowSize -> return ()
                 ConstantWindowSize w h -> do
                     _ <- SDLV.renderSetLogicalSize renderer (fromIntegral w) (fromIntegral h)
                     return ()
-            cb (SDLPlatform renderer window)
+            cb (SDL2Platform renderer window)
 
 eventArrayStaticSize :: Int
 eventArrayStaticSize = 128
@@ -207,25 +249,21 @@ imageToSurface (ImageRGB8 im) = do
 imageToSurface _ = error "unsupported image format"
 
 
-instance Platform SDLPlatform where
-  type PlatformImage SDLPlatform = SDLT.Texture
-  type PlatformFont SDLPlatform = Int
-  type PlatformAudioBuffer SDLPlatform = AlBuffer
-  type PlatformAudioSource SDLPlatform = AlSource
+instance Platform SDL2Platform where
+  type PlatformImage SDL2Platform = SDLT.Texture
+  type PlatformFont SDL2Platform = Int
+  type PlatformAudioBuffer SDL2Platform = AudioBufferImpl
+  type PlatformAudioSource SDL2Platform = AudioSourceImpl
   loadAudio _ fn = do
     wavFile <- sdl2LoadWave fn
     case wavFile of
       Nothing -> error $ "error loading " <> fn
       Just wavFile' -> do
-        AL.bufferFromFile wavFile'
-  freeBuffer _ = AL.freeBuffer
-  freeSource _ = AL.freeSource
-  playBuffer _ b pm = do
-    source <- AL.genSource
-    AL.bufferToSource b source
-    AL.playSource pm source
-    return source
-  sourceIsStopped _ = AL.sourceIsStopped
+        audioBufferFromFile wavFile'
+  freeBuffer _ = audioFreeBuffer
+  freeSource _ = audioFreeSource
+  playBuffer _ b pm = audioPlayBuffer b pm
+  sourceIsStopped _ = audioSourceIsStopped
   pollEvents _ = mapMaybe (^. fromSdlEvent) <$> sdlPollEvents
   loadFont _ _ _ = return 1
   freeFont _ _ = return ()

@@ -1,17 +1,19 @@
 module Main where
 
+import           ClassyPrelude
 import           Linear.V2
+import           Linear.Vector       ((^+^))
 import           Wrench.Color
+import           Wrench.Declarative
 import           Wrench.Engine
-import           Wrench.Picture
-import           Wrench.WindowSize
-import           Wrench.Point
-import           Wrench.KeyMovement
 import           Wrench.Event
+import           Wrench.KeyMovement
+import qualified Wrench.Keysym       as Key
+import           Wrench.Picture
 import           Wrench.Platform
-import qualified Wrench.Keysym as Key
-import ClassyPrelude
-import Linear.Vector((^+^))
+import           Wrench.Point
+import           Wrench.ViewportSize
+import           Wrench.WindowSize
 
 data World = World {
     carPosition :: Point

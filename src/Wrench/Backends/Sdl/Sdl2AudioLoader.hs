@@ -1,10 +1,9 @@
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 module Wrench.Backends.Sdl.Sdl2AudioLoader(sdl2LoadWave) where
 
 import Graphics.UI.SDL.Audio(loadWAV)
 import Graphics.UI.SDL.Types(AudioSpec(..),AudioFormat)
-import Control.Lens(makeLenses,(^.))
+import Control.Lens((^.))
 import Foreign.Ptr
 import           ClassyPrelude             hiding (lookup,FilePath,(</>),Vector)
 import System.ByteOrder
@@ -16,16 +15,10 @@ import Foreign.ForeignPtr(newForeignPtr_,ForeignPtr,castForeignPtr)
 import Foreign.C.String(withCString)
 import Data.Int(Int8,Int16)
 import Data.Bits(rotateL,Bits)
+import Wrench.Backends.Sdl.Sdl2AudioFile
 import Data.Word(Word16)
 import System.FilePath
 
-data Sdl2AudioFile = Sdl2AudioFile {
-    _sdl2afAudioSpec :: AudioSpec
-  , _sdl2afData :: ForeignPtr Word8
-  , _sdl2afLength :: Word32
-  }
-
-$(makeLenses ''Sdl2AudioFile)
 
 sdl_AUDIO_U8 :: AudioFormat
 sdl_AUDIO_U8 = 0x0008

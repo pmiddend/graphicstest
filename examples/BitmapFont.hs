@@ -1,16 +1,17 @@
 module Main where
 
-import Wrench.Platform
-import Wrench.Color
-import Wrench.BitmapFont.Render
-import Wrench.BitmapFont.RenderResult
-import Wrench.Event
-import Wrench.WindowSize
-import Wrench.Engine
-import Wrench.ImageData
-import System.FilePath
-import ClassyPrelude hiding ((</>))
-import Control.Lens((^.))
+import           ClassyPrelude                  hiding ((</>))
+import           Control.Lens                   ((^.))
+import           System.FilePath
+import           Wrench.BitmapFont.Render
+import           Wrench.BitmapFont.RenderResult
+import           Wrench.Color
+import           Wrench.Engine
+import           Wrench.Event
+import           Wrench.ImageData
+import           Wrench.MediaData
+import           Wrench.Platform
+import           Wrench.WindowSize
 
 mainLoop :: Platform p => p -> SurfaceMap (PlatformImage p) -> IO ()
 mainLoop platform images = do
@@ -19,10 +20,10 @@ mainLoop platform images = do
       then return ()
       else do
         let picture = (textToPicture images "djvu" 0 "Füße in Osnabrück") ^. bfrrPicture
-        wrenchRender platform images undefined (Just colorsBlack) picture
+        wrenchRender platform images (error "fonts not loaded") (Just colorsBlack) picture
         mainLoop platform images
 
 main :: IO ()
 main = withPlatform "bitmap font test" DynamicWindowSize $ \platform -> do
-  (images, _) <- readMediaFiles (loadImage platform) ("media" </> "images")
-  mainLoop platform images
+  mediaData <- readMediaFiles (loadImage platform) ("media" </> "images")
+  mainLoop platform (mediaData ^. mdSurfaces)

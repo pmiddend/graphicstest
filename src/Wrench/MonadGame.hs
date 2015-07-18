@@ -1,45 +1,47 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
-{-# LANGUAGE OverloadedStrings      #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving      #-}
+{-# LANGUAGE OverloadedStrings          #-}
 module Wrench.MonadGame(
     MonadGame(..)
   , runGame
   , glookupAnimUnsafe
   , glookupImageRectangleUnsafe
+  , MonadGameBackend
   ) where
 
-import           Control.Monad.State.Strict (MonadState, StateT, evalStateT,
-                                             get, gets, put,modify)
-import           Control.Monad.Writer.Lazy (WriterT)
-import qualified Data.Set                   as S
-import           ClassyPrelude hiding((</>),FilePath)
-import Data.Maybe(fromJust)
-import Control.Lens((^.))
+import           ClassyPrelude                  hiding (FilePath, (</>))
+import           Control.Lens                   ((^.))
+import           Control.Monad.Random           (MonadRandom (..), RandT,
+                                                 evalRandT)
+import           Control.Monad.State.Strict     (MonadState, StateT, evalStateT,
+                                                 get, gets, modify, put)
+import           Control.Monad.Writer.Lazy      (WriterT)
+import qualified Data.Map.Strict                as M
+import           Data.Maybe                     (fromJust)
+import qualified Data.Set                       as S
+import           System.FilePath
+import           System.Random                  (StdGen, getStdGen)
 import           Wrench.Animation
 import           Wrench.AnimId
+import           Wrench.AudioData
+import           Wrench.BitmapFont.Render
+import           Wrench.BitmapFont.RenderResult
 import           Wrench.Color
 import           Wrench.Engine
-import           Wrench.WindowSize
-import           Wrench.RenderBlockMode
-import Wrench.MediaData
-import           Wrench.AudioData
-import           Wrench.ImageData
-import System.FilePath
-import           Wrench.KeyMovement
-import           Wrench.PlayMode
-import           Wrench.Picture
-import           Wrench.Platform            (Platform)
 import           Wrench.Event
-import qualified Wrench.Platform            as P
-import qualified Data.Map.Strict as M
-import           Wrench.Rectangle
-import           Wrench.Time
+import           Wrench.ImageData
+import           Wrench.Keydowns
+import           Wrench.KeyMovement
+import           Wrench.MediaData
+import           Wrench.Picture
+import           Wrench.Platform                (Platform)
+import qualified Wrench.Platform                as P
+import           Wrench.PlayMode
 import           Wrench.Point
-import System.Random(StdGen,getStdGen)
-import Control.Monad.Random(MonadRandom(..),RandT,evalRandT)
-import Wrench.BitmapFont.Render
-import Wrench.BitmapFont.RenderResult
-import Wrench.Keydowns
+import           Wrench.Rectangle
+import           Wrench.RenderBlockMode
+import           Wrench.Time
+import           Wrench.WindowSize
 
 class MonadGame m where
   gpollEvents :: m [Event]
@@ -55,30 +57,32 @@ class MonadGame m where
   glookupAnim :: AnimId -> m (Maybe Animation)
   glookupImageRectangle :: ImageId -> m (Maybe Rectangle)
 
-glookupAnimUnsafe :: (Functor m,MonadGame m) => AnimId -> m Animation 
+glookupAnimUnsafe :: (Functor m,MonadGame m) => AnimId -> m Animation
 glookupAnimUnsafe anim = fromJust <$> glookupAnim anim
 
 glookupImageRectangleUnsafe :: (Functor m,MonadGame m) => ImageId -> m Rectangle
 glookupImageRectangleUnsafe im = fromJust <$> glookupImageRectangle im
 
 data GameData p = GameData {
-    gdSurfaces     :: SurfaceMap (P.PlatformImage p)
-  , gdSounds       :: SoundMap (P.PlatformAudioBuffer p)
-  , gdSources      :: [P.PlatformAudioSource p]
-  , gdAnims        :: AnimMap
-  , gdPlatform     :: p
-  , gdBackgroundColor     :: Maybe Color
-  , gdCurrentTicks :: !TimeTicks
-  , gdTimeDelta    :: !TimeDelta
-  , gdKeydowns     :: !Keydowns
-  , gdFont         :: P.PlatformFont p
+    gdSurfaces        :: SurfaceMap (P.PlatformImage p)
+  , gdSounds          :: SoundMap (P.PlatformAudioBuffer p)
+  , gdSources         :: [P.PlatformAudioSource p]
+  , gdAnims           :: AnimMap
+  , gdPlatform        :: p
+  , gdBackgroundColor :: Maybe Color
+  , gdCurrentTicks    :: !TimeTicks
+  , gdTimeDelta       :: !TimeDelta
+  , gdKeydowns        :: !Keydowns
+  , gdFont            :: P.PlatformFont p
   , gdRenderBlockMode :: !RenderBlockMode
-  , gdLastRender :: !TimeTicks
+  , gdLastRender      :: !TimeTicks
   }
 
 newtype GameDataM p a = GameDataM {
   runGameData :: RandT StdGen (StateT (GameData p) IO) a
   } deriving(Monad,MonadRandom,MonadIO,MonadState (GameData p),Applicative,Functor)
+
+type MonadGameBackend a = GameDataM PlatformBackend a
 
 instance (Monad m,MonadGame m) => MonadGame (StateT n m) where
   gpollEvents = lift gpollEvents
@@ -175,7 +179,7 @@ processKeydown _ = id
 processKeydowns :: Keydowns -> [Event] -> Keydowns
 processKeydowns = foldr processKeydown
 
-runGame :: FilePath -> P.WindowTitle -> WindowSize -> Maybe Color -> RenderBlockMode -> GameDataM PlatformBackend () -> IO ()
+runGame :: FilePath -> P.WindowTitle -> WindowSize -> Maybe Color -> RenderBlockMode -> MonadGameBackend () -> IO ()
 runGame mediaDir title size bgColor renderBlockMode action = withPlatform title size $ do
   \platform -> do
     mediaData <- readMediaFiles (P.loadImage platform) (mediaDir </> "images")
