@@ -1,34 +1,40 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Wrench.Event where
 
-import Wrench.KeyMovement
-import Wrench.Keysym
-import Wrench.MouseButton
-import Wrench.Time
-import Wrench.MouseButtonMovement
-import Wrench.Point
-import ClassyPrelude
-import Control.Lens(makeLenses,makePrisms)
+import           ClassyPrelude
+import           Control.Lens               (makeLenses, makePrisms)
+import           Wrench.KeyMovement
+import           Wrench.Keysym
+import           Wrench.MouseButton
+import           Wrench.MouseButtonMovement
+import           Wrench.Point
+import           Wrench.Time
 
 data KeyboardEvent = KeyboardEvent {
     _keyMovement :: KeyMovement
-  , _keyRepeat :: Bool
-  , _keySym :: Keysym
+  , _keyRepeat   :: Bool
+  , _keySym      :: Keysym
   }
 
 $(makeLenses ''KeyboardEvent)
 
 data MouseButtonEvent = MouseButtonEvent {
-    _mouseButton :: MouseButton
+    _mouseButton         :: MouseButton
   , _mouseButtonMovement :: MouseButtonMovement
-  , _mousePosition :: Point
+  , _mousePosition       :: Point
   }
 
 $(makeLenses ''MouseButtonEvent)
 
+data MouseMotionEvent = MouseMotionEvent {
+    _mouseMotionDelta    :: Point
+  , _mouseMotionPosition :: Point
+  }
+
 data Event =
       Keyboard KeyboardEvent
     | MouseButton MouseButtonEvent
+    | MouseMotion MouseMotionEvent
     | Quit
     | Tick TimeDelta
 

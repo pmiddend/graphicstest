@@ -124,6 +124,7 @@ fromSdlEvent = to fromSdlEvent'
   where fromSdlEvent' (SDLT.KeyboardEvent _ _ _ state r sym) = Just $ Keyboard $ KeyboardEvent (fromSdlKeyState state) (r /= 0) (fromSdlSym sym)
         fromSdlEvent' (SDLT.QuitEvent{}) = Just Quit
         fromSdlEvent' (SDLT.MouseButtonEvent{SDLT.mouseButtonEventState=state,SDLT.mouseButtonEventButton=button,SDLT.mouseButtonEventX=x,SDLT.mouseButtonEventY=y}) = Just $ MouseButton $ MouseButtonEvent{_mouseButton=fromSdlMouseButton button,_mouseButtonMovement=fromSdlMouseButtonState state,_mousePosition=fromIntegral <$> V2 x y}
+        fromSdlEvent' (SDLT.MouseMotionEvent{SDLT.mouseMotionEventX=px,SDLT.mouseMotionEventY=py,SDLT.mouseMotionEventXRel=dx,SDLT.mouseMotionEventYRel=dy}) = Just $ MouseMotion $ MouseMotionEvent{_mouseMotionPosition=V2 (fromIntegral px) (fromIntegral py),_mouseMotionDelta=V2 (fromIntegral dx) (fromIntegral dy)}
         fromSdlEvent' _ = Nothing
         fromSdlMouseButton SDLEnum.SDL_BUTTON_LEFT = LeftButton
         fromSdlMouseButton SDLEnum.SDL_BUTTON_MIDDLE = MiddleButton
