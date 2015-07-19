@@ -7,6 +7,7 @@ import           Wrench.Engine
 import           Wrench.Event
 import qualified Wrench.Keysym          as Key
 import           Wrench.MonadGame
+import           Wrench.MouseGrabMode
 import           Wrench.Picture
 import           Wrench.RenderBlockMode
 import           Wrench.WindowSize
@@ -27,5 +28,5 @@ mainLoop = do
 
 main :: IO ()
 main =
-  runGame "media" "wrench example" DynamicWindowSize (Just colorsBlack) (RenderAndWait 30) mainLoop
+  runGame "media" "wrench example" DynamicWindowSize MouseGrabNo (Just colorsBlack) (RenderAndWait 30) mainLoop
 

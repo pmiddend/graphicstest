@@ -23,6 +23,7 @@ import           Wrench.Event
 import           Wrench.FloatType                 (FloatType)
 import           Wrench.ImageData
 import           Wrench.Internal.Picture
+import           Wrench.MouseGrabMode
 import           Wrench.Platform
 import           Wrench.Point                     (Point)
 import           Wrench.Rectangle
@@ -129,7 +130,7 @@ type PlatformBackend = SGEPlatform
 type PlatformBackend = SDL2Platform
 #endif
 
-withPlatform :: WindowTitle -> WindowSize -> (PlatformBackend -> IO ()) -> IO ()
+withPlatform :: WindowTitle -> WindowSize -> MouseGrabMode -> (PlatformBackend -> IO ()) -> IO ()
 #if defined(USE_SGE)
 withPlatform = withSGEPlatform
 #else

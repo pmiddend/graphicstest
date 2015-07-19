@@ -65,6 +65,7 @@ library
                      , Wrench.ImageParser
                      , Wrench.RenderTargetFps
                      , Wrench.RenderBlockMode
+                     , Wrench.MouseGrabMode
                      , Wrench.Animation
                      , Wrench.Declarative
                      , Wrench.ViewportSize

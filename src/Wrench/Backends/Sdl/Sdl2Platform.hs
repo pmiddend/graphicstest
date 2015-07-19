@@ -28,6 +28,7 @@ import           Wrench.KeyMovement
 import qualified Wrench.Keysym                       as Keysym
 import           Wrench.MouseButton
 import           Wrench.MouseButtonMovement
+import           Wrench.MouseGrabMode
 import           Wrench.Platform
 import           Wrench.WindowSize
 #ifdef USE_OPENAL
@@ -45,9 +46,7 @@ import           Foreign.Marshal.Array               (allocaArray, peekArray)
 import           Foreign.Marshal.Utils               (with)
 import           Foreign.Ptr                         (Ptr, nullPtr)
 import           Foreign.Storable                    (peek)
-import           Wrench.AudioFile
 import           Wrench.Backends.Sdl.Sdl2AudioLoader
-import           Wrench.PlayMode
 import           Wrench.Rectangle
 
 data SDL2Platform = SDL2Platform {
@@ -161,8 +160,8 @@ renderFinish' :: SDLT.Renderer -> IO ()
 renderFinish' = SDLV.renderPresent
 
 
-withWindow :: WindowSize -> T.Text -> (SDLT.Window -> IO a) -> IO a
-withWindow windowSize title' callback = withCStringLen (unpack title') $ \title ->
+withWindow :: WindowSize -> T.Text -> MouseGrabMode -> (SDLT.Window -> IO a) -> IO a
+withWindow windowSize title' mouseGrab callback = withCStringLen (unpack title') $ \title ->
   let
     acquireResource = SDLV.createWindow (fst title) SDLEnum.SDL_WINDOWPOS_UNDEFINED SDLEnum.SDL_WINDOWPOS_UNDEFINED (fromIntegral screenAbsoluteWidth) (fromIntegral screenAbsoluteHeight) windowFlags
     screenAbsoluteWidth,screenAbsoluteHeight :: Int
@@ -172,7 +171,7 @@ withWindow windowSize title' callback = withCStringLen (unpack title') $ \title 
     screenAbsoluteHeight = case windowSize of
             DynamicWindowSize -> 0
             ConstantWindowSize _ h -> h
-    windowFlags = SDLEnum.SDL_WINDOW_RESIZABLE
+    windowFlags = SDLEnum.SDL_WINDOW_RESIZABLE .|. (if mouseGrab == MouseGrabYes then SDLEnum.SDL_WINDOW_INPUT_GRABBED else 0)
     releaseResource = SDLV.destroyWindow
   in
     bracket acquireResource releaseResource callback
@@ -188,11 +187,12 @@ sizeToPoint :: SDLT.Size -> Point
 sizeToPoint (SDLT.Size w h) = V2 (fromIntegral w) (fromIntegral h)
 -}
 
-withSdlPlatform :: WindowTitle -> WindowSize -> (SDL2Platform -> IO ()) -> IO ()
-withSdlPlatform windowTitle windowSize cb =
+withSdlPlatform :: WindowTitle -> WindowSize -> MouseGrabMode -> (SDL2Platform -> IO ()) -> IO ()
+withSdlPlatform windowTitle windowSize mouseGrab cb =
   withFontInit $
     withImgInit $
-      withWindow windowSize (unpackWindowTitle windowTitle) $ \window -> do
+      withWindow windowSize (unpackWindowTitle windowTitle) mouseGrab $ \window -> do
+        when (mouseGrab == MouseGrabYes) (void (SDLE.showCursor 0))
         withRenderer window $ \renderer -> do
           withAudio $ \_ _ -> do
             case windowSize of

@@ -33,6 +33,7 @@ import           Wrench.ImageData
 import           Wrench.Keydowns
 import           Wrench.KeyMovement
 import           Wrench.MediaData
+import           Wrench.MouseGrabMode
 import           Wrench.Picture
 import           Wrench.Platform                (Platform)
 import qualified Wrench.Platform                as P
@@ -179,8 +180,8 @@ processKeydown _ = id
 processKeydowns :: Keydowns -> [Event] -> Keydowns
 processKeydowns = foldr processKeydown
 
-runGame :: FilePath -> P.WindowTitle -> WindowSize -> Maybe Color -> RenderBlockMode -> MonadGameBackend () -> IO ()
-runGame mediaDir title size bgColor renderBlockMode action = withPlatform title size $ do
+runGame :: FilePath -> P.WindowTitle -> WindowSize -> MouseGrabMode -> Maybe Color -> RenderBlockMode -> MonadGameBackend () -> IO ()
+runGame mediaDir title size mouseGrab bgColor renderBlockMode action = withPlatform title size mouseGrab $ do
   \platform -> do
     mediaData <- readMediaFiles (P.loadImage platform) (mediaDir </> "images")
     sounds <- readAudioFiles (P.loadAudio platform) (mediaDir </> "sounds")

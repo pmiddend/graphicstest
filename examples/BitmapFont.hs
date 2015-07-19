@@ -10,6 +10,7 @@ import           Wrench.Engine
 import           Wrench.Event
 import           Wrench.ImageData
 import           Wrench.MediaData
+import           Wrench.MouseGrabMode
 import           Wrench.Platform
 import           Wrench.WindowSize
 
@@ -24,6 +25,6 @@ mainLoop platform images = do
         mainLoop platform images
 
 main :: IO ()
-main = withPlatform "bitmap font test" DynamicWindowSize $ \platform -> do
+main = withPlatform "bitmap font test" DynamicWindowSize MouseGrabNo $ \platform -> do
   mediaData <- readMediaFiles (loadImage platform) ("media" </> "images")
   mainLoop platform (mediaData ^. mdSurfaces)

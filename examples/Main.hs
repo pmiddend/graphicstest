@@ -2,13 +2,14 @@ module Main where
 
 import           ClassyPrelude
 import           Linear.V2
-import           Linear.Vector       ((^+^))
+import           Linear.Vector        ((^+^))
 import           Wrench.Color
 import           Wrench.Declarative
 import           Wrench.Engine
 import           Wrench.Event
 import           Wrench.KeyMovement
-import qualified Wrench.Keysym       as Key
+import qualified Wrench.Keysym        as Key
+import           Wrench.MouseGrabMode
 import           Wrench.Picture
 import           Wrench.Platform
 import           Wrench.Point
@@ -37,7 +38,7 @@ eventHandler event world = case event of
 
 main :: IO ()
 main =
-  withPlatform (WindowTitle "window title") DynamicWindowSize $ \p ->
+  withPlatform (WindowTitle "window title") DynamicWindowSize MouseGrabYes $ \p ->
     wrenchPlay
         p
         (MediaPath "media/images")
