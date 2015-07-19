@@ -31,6 +31,8 @@ data MouseMotionEvent = MouseMotionEvent {
   , _mouseMotionPosition :: Point
   }
 
+$(makeLenses ''MouseMotionEvent)
+
 data Event =
       Keyboard KeyboardEvent
     | MouseButton MouseButtonEvent
