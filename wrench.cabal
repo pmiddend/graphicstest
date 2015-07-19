@@ -146,22 +146,6 @@ executable example_monadgame
                     , OverloadedStrings
   ghc-options: -Wall
 
-executable example_frp
-  main-is:             Frp.hs
-  hs-source-dirs:      examples
-  -- other-extensions:
-  build-depends:       base >=4.7 && <4.9
-                     , wrench
-                     , reactive-banana
-                     , linear
-                     , classy-prelude
-                     , lens
-                     , monad-loops
-  default-language:    Haskell2010
-  default-extensions: NoImplicitPrelude
-                    , OverloadedStrings
-  ghc-options: -Wall
-
 executable example_sound
   main-is:             Sound.hs
   hs-source-dirs:      examples
