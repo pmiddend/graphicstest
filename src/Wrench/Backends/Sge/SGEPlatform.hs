@@ -97,7 +97,8 @@ import qualified SGE.Sprite (
        )
 
 import qualified SGE.Systems (
-         InstancePtr
+         CursorOption(..)
+       , InstancePtr
        , audioLoader
        , audioPlayer
        , cursor
@@ -151,6 +152,10 @@ import qualified Wrench.MouseButton as MouseButton (
 
 import Wrench.MouseButtonMovement (
          MouseButtonMovement(..)
+       )
+
+import Wrench.MouseGrabMode (
+         MouseGrabMode(..)
        )
 
 import Wrench.Platform (
@@ -443,6 +448,11 @@ makeAudioRepeat p = case p of
                 PlayModeOnce -> SGE.Audio.RepeatOnce
                 PlayModeLooping -> SGE.Audio.RepeatLoop
 
+makeCursorOption :: MouseGrabMode -> SGE.Systems.CursorOption
+makeCursorOption m = case m of
+                 MouseGrabNo -> SGE.Systems.CursoroptionNormal
+                 MouseGrabYes -> SGE.Systems.CursoroptionExclusive
+
 instance Platform SGEPlatform where
          type PlatformAudioBuffer SGEPlatform = SGE.Audio.BufferPtr
          type PlatformAudioSource SGEPlatform = SGE.Audio.SoundPtr
@@ -501,8 +511,8 @@ instance Platform SGEPlatform where
                                                                        (toSGEDim (s ^. spriteDestRect ^. rectDimensions))
                                                                        (realToFrac (s ^. spriteRotation ^. getRadians)) tex
 
-withSGEPlatform :: WindowTitle -> WindowSize -> (SGEPlatform -> IO ()) -> IO ()
-withSGEPlatform windowTitle size cb =
-                SGE.Systems.with (T.unpack (unpackWindowTitle windowTitle)) (windowSizeToMaybe size) $ \system -> do
+withSGEPlatform :: WindowTitle -> WindowSize -> MouseGrabMode -> (SGEPlatform -> IO ()) -> IO ()
+withSGEPlatform windowTitle size mouse cb =
+                SGE.Systems.with (T.unpack (unpackWindowTitle windowTitle)) (windowSizeToMaybe size) (makeCursorOption mouse) $ \system -> do
                                  context <- newIORef Nothing
                                  cb (SGEPlatform system context size)
