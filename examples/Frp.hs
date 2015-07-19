@@ -4,6 +4,7 @@ module Main where
 
 import           ClassyPrelude
 import           Control.Lens                (has, only, (^.), (^?), (^?!))
+import           Control.Monad.Loops         (whileM_)
 import           Linear.V2
 import qualified Reactive.Banana.Combinators as RBC
 import           Reactive.Banana.Frameworks
@@ -21,6 +22,7 @@ import           Wrench.Point
 import           Wrench.Time
 import           Wrench.WindowSize
 
+initialCarPosition :: Point
 initialCarPosition = V2 100 100
 
 eventToPosChange :: RBC.Event t Event -> RBC.Event t Point
@@ -31,8 +33,8 @@ eventToPosChange event = RBC.filterJust ((\e -> (e ^? _Keyboard) >>= eventToPosC
         eventToPosChange' (KeyboardEvent{_keyMovement=KeyDown,_keySym=KS.Down}) = Just (V2 0 10)
         eventToPosChange' _ = Nothing
 
-setupNetwork :: forall t p. Frameworks t => Platform p => p -> SurfaceMap (PlatformImage p) -> AddHandler TimeTicks -> AddHandler Event -> Moment t ()
-setupNetwork platform surfaces tickAddHandler eventAddHandler = do
+setupNetwork :: forall t p. Frameworks t => Platform p => p -> SurfaceMap (PlatformImage p) -> AddHandler TimeTicks -> AddHandler Event -> Handler () -> Moment t ()
+setupNetwork platform surfaces tickAddHandler eventAddHandler quitFire = do
   etick <- fromAddHandler tickAddHandler
   eevent <- fromAddHandler eventAddHandler
   let
@@ -41,6 +43,9 @@ setupNetwork platform surfaces tickAddHandler eventAddHandler = do
     currentPictureEvent = ((`pictureTranslated` (pictureSpriteCentered "car")) <$> cumulatedPositionBehavior) RBC.<@ etick
   --let carPosX = accumB 100 (1 <$ keyDownSyms eevent)
   reactimate $ (wrenchRender platform surfaces (error "no font specified") (Just colorsBlack)) <$> currentPictureEvent
+  let quitEvent = RBC.filterE (has (_Keyboard . keySym . only KS.Escape)) eevent
+  reactimate $ (\_ -> quitFire ()) <$> quitEvent
+  return ()
 --  reactimate $ (\v -> putStrLn $ "Ah, an event: " <> pack (show v) ) <$> cumulatedPosition
 
 main :: IO ()
@@ -48,10 +53,13 @@ main = do
   withPlatform (WindowTitle "test") DynamicWindowSize $ \platform -> do
     (tickAddHandler,tickFire) <- newAddHandler
     (eventAddHandler,eventFire) <- newAddHandler
+    (quitAddHandler,quitFire) <- newAddHandler
     md <- liftIO (readMediaFiles (loadImage platform) "media/images")
-    compiledNetwork <- compile (setupNetwork platform (md ^. mdSurfaces) tickAddHandler eventAddHandler)
+    quitRef <- newIORef True
+    unregisterQuit <- register quitAddHandler (\_ -> writeIORef quitRef False)
+    compiledNetwork <- compile (setupNetwork platform (md ^. mdSurfaces) tickAddHandler eventAddHandler quitFire)
     actuate compiledNetwork
-    forever $ do
+    whileM_ (readIORef quitRef) $ do
       ticks <- getTicks
       events <- pollEvents platform
       mapM_ eventFire events

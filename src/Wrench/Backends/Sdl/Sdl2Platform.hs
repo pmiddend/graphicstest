@@ -143,6 +143,7 @@ fromSdlEvent = to fromSdlEvent'
                          | k == SDLEnum.SDLK_LGUI = Keysym.LeftGUI
                          | k == SDLEnum.SDLK_LSHIFT = Keysym.LeftShift
                          | k == SDLEnum.SDLK_SPACE = Keysym.Space
+                         | k == SDLEnum.SDLK_ESCAPE = Keysym.Escape
         fromSdlKeycode k = error $ "Unknown keycode, normal " <> show k <> ", scancode " <> show (k .&. (complement (1 `shift` 30)))
 
 setRenderDrawColor :: SDLT.Renderer -> Color -> IO ()

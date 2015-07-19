@@ -9,33 +9,33 @@ module Wrench.Engine(
   , PlatformBackend
   ) where
 
-import           Control.Lens              ((&), (^.))
-import           Control.Lens.Getter       (Getter, to)
-import           Control.Lens.Setter       ((%~), (+~), (.~))
-import           Control.Lens.TH           (makeLenses)
-import           Linear.Matrix             (M33, (!*), (!*!))
-import           Linear.V2                 (V2 (..), _x, _y)
-import           Linear.V3                 (V3 (..))
-import           Numeric.Lens              (dividing)
+import           Control.Lens                     ((&), (^.))
+import           Control.Lens.Getter              (Getter, to)
+import           Control.Lens.Setter              ((%~), (+~), (.~))
+import           Control.Lens.TH                  (makeLenses)
+import           Linear.Matrix                    (M33, (!*), (!*!))
+import           Linear.V2                        (V2 (..), _x, _y)
+import           Linear.V3                        (V3 (..))
+import           Numeric.Lens                     (dividing)
 import           Wrench.Angular
 import           Wrench.Color
-import           Wrench.WindowSize
 import           Wrench.Event
-import           Wrench.Rectangle
-import           Wrench.FloatType          (FloatType)
+import           Wrench.FloatType                 (FloatType)
 import           Wrench.ImageData
 import           Wrench.Internal.Picture
 import           Wrench.Platform
-import           Wrench.Point              (Point)
+import           Wrench.Point                     (Point)
+import           Wrench.Rectangle
 import           Wrench.RenderPositionMode
+import           Wrench.WindowSize
 #if defined(USE_SGE)
 import           Wrench.Backends.Sge.SGEPlatform
 #endif
 #if defined(USE_SDL)
 import           Wrench.Backends.Sdl.Sdl2Platform
 #endif
-import           ClassyPrelude hiding(FilePath,(</>))
-import Wrench.List(concatMapM)
+import           ClassyPrelude                    hiding (FilePath, (</>))
+import           Wrench.List                      (concatMapM)
 
 -- TODO: Use Linear.Matrix.identity
 eye3 :: Num a => M33 a

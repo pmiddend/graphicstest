@@ -155,6 +155,7 @@ executable example_frp
                      , linear
                      , classy-prelude
                      , lens
+                     , monad-loops
   default-language:    Haskell2010
   default-extensions: NoImplicitPrelude
                     , OverloadedStrings
