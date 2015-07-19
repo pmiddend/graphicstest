@@ -171,7 +171,7 @@ withWindow windowSize title' mouseGrab callback = withCStringLen (unpack title')
     screenAbsoluteHeight = case windowSize of
             DynamicWindowSize -> 0
             ConstantWindowSize _ h -> h
-    windowFlags = SDLEnum.SDL_WINDOW_RESIZABLE .|. (if mouseGrab == MouseGrabYes then SDLEnum.SDL_WINDOW_INPUT_GRABBED else 0)
+    windowFlags = SDLEnum.SDL_WINDOW_RESIZABLE{- .|. (if mouseGrab == MouseGrabYes then SDLEnum.SDL_WINDOW_INPUT_GRABBED else 0)-}
     releaseResource = SDLV.destroyWindow
   in
     bracket acquireResource releaseResource callback
@@ -192,7 +192,7 @@ withSdlPlatform windowTitle windowSize mouseGrab cb =
   withFontInit $
     withImgInit $
       withWindow windowSize (unpackWindowTitle windowTitle) mouseGrab $ \window -> do
-        when (mouseGrab == MouseGrabYes) (void (SDLE.showCursor 0))
+        when (mouseGrab == MouseGrabYes) (void (SDLE.setRelativeMouseMode True))
         withRenderer window $ \renderer -> do
           withAudio $ \_ _ -> do
             case windowSize of
