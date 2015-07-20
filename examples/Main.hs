@@ -32,7 +32,7 @@ eventHandler event world = case event of
   Keyboard (KeyboardEvent{_keyMovement=KeyDown, _keySym=Key.Right}) -> World (carPosition world ^+^ V2 10 0)
   Keyboard (KeyboardEvent{_keyMovement=KeyDown, _keySym=Key.Up}) -> World (carPosition world ^+^ V2 0 (-10))
   Keyboard (KeyboardEvent{_keyMovement=KeyDown, _keySym=Key.Down}) -> World (carPosition world ^+^ V2 0 10)
-  MouseMotion (MouseMotionEvent{_mouseMotionDelta=delta}) -> World (carPosition world + delta)
+  MouseAxis (MouseAxisEvent{_mouseAxisDelta=delta}) -> World (carPosition world + delta)
   _ -> world
 
 

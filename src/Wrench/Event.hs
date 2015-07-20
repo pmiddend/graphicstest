@@ -26,17 +26,23 @@ data MouseButtonEvent = MouseButtonEvent {
 
 $(makeLenses ''MouseButtonEvent)
 
-data MouseMotionEvent = MouseMotionEvent {
-    _mouseMotionDelta    :: Point
-  , _mouseMotionPosition :: Point
+data CursorMotionEvent = CursorMotionEvent {
+    _cursorMotionPosition :: Point
   }
 
-$(makeLenses ''MouseMotionEvent)
+$(makeLenses ''CursorMotionEvent)
+
+data MouseAxisEvent = MouseAxisEvent {
+    _mouseAxisDelta :: Point
+  }
+
+$(makeLenses ''MouseAxisEvent)
 
 data Event =
       Keyboard KeyboardEvent
     | MouseButton MouseButtonEvent
-    | MouseMotion MouseMotionEvent
+    | CursorMotion CursorMotionEvent
+    | MouseAxis MouseAxisEvent
     | Quit
     | Tick TimeDelta
 

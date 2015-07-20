@@ -8,10 +8,8 @@ module Wrench.Backends.Sdl.Sdl2Platform where
 
 import           ClassyPrelude                       hiding (FilePath, Vector,
                                                       lookup, (</>))
-import           Control.Lens                        (makeLenses)
-import           Control.Lens                        ((^.))
-import           Control.Lens.Getter                 (Getter, to)
-import           Control.Lens.Iso                    (Iso', from, iso)
+import           Control.Lens                        (Getter, Iso', from, iso,
+                                                      makeLenses, to, (^.))
 import           Data.Bits
 import qualified Data.Text                           as T
 import           Foreign.ForeignPtr                  (withForeignPtr)
@@ -50,8 +48,9 @@ import           Wrench.Backends.Sdl.Sdl2AudioLoader
 import           Wrench.Rectangle
 
 data SDL2Platform = SDL2Platform {
-    _sdlpRenderer :: SDLT.Renderer
-  , _sdlpWindow   :: SDLT.Window
+    _sdlpRenderer      :: SDLT.Renderer
+  , _sdlpWindow        :: SDLT.Window
+  , _sdlpMouseGrabMode :: MouseGrabMode
   }
 
 $(makeLenses ''SDL2Platform)
@@ -118,12 +117,15 @@ wrenchColor :: Iso' SDLT.Color Color
 wrenchColor = iso fromSdlColor toSdlColor
 
 
-fromSdlEvent :: Getter SDLT.Event (Maybe Event)
-fromSdlEvent = to fromSdlEvent'
+fromSdlEvent :: MouseGrabMode -> Getter SDLT.Event (Maybe Event)
+fromSdlEvent grabMode = to fromSdlEvent'
   where fromSdlEvent' (SDLT.KeyboardEvent _ _ _ state r sym) = Just $ Keyboard $ KeyboardEvent (fromSdlKeyState state) (r /= 0) (fromSdlSym sym)
         fromSdlEvent' (SDLT.QuitEvent{}) = Just Quit
         fromSdlEvent' (SDLT.MouseButtonEvent{SDLT.mouseButtonEventState=state,SDLT.mouseButtonEventButton=button,SDLT.mouseButtonEventX=x,SDLT.mouseButtonEventY=y}) = Just $ MouseButton $ MouseButtonEvent{_mouseButton=fromSdlMouseButton button,_mouseButtonMovement=fromSdlMouseButtonState state,_mousePosition=fromIntegral <$> V2 x y}
-        fromSdlEvent' (SDLT.MouseMotionEvent{SDLT.mouseMotionEventX=px,SDLT.mouseMotionEventY=py,SDLT.mouseMotionEventXRel=dx,SDLT.mouseMotionEventYRel=dy}) = Just $ MouseMotion $ MouseMotionEvent{_mouseMotionPosition=V2 (fromIntegral px) (fromIntegral py),_mouseMotionDelta=V2 (fromIntegral dx) (fromIntegral dy)}
+        fromSdlEvent' (SDLT.MouseMotionEvent{SDLT.mouseMotionEventX=px,SDLT.mouseMotionEventY=py,SDLT.mouseMotionEventXRel=dx,SDLT.mouseMotionEventYRel=dy}) =
+          case grabMode of
+            MouseGrabYes -> Just $ MouseAxis $ MouseAxisEvent{_mouseAxisDelta=V2 (fromIntegral dx) (fromIntegral dy)}
+            MouseGrabNo ->  Just $ CursorMotion $ CursorMotionEvent{_cursorMotionPosition=V2 (fromIntegral px) (fromIntegral py)}
         fromSdlEvent' _ = Nothing
         fromSdlMouseButton SDLEnum.SDL_BUTTON_LEFT = LeftButton
         fromSdlMouseButton SDLEnum.SDL_BUTTON_MIDDLE = MiddleButton
@@ -200,7 +202,7 @@ withSdlPlatform windowTitle windowSize mouseGrab cb =
                 ConstantWindowSize w h -> do
                     _ <- SDLV.renderSetLogicalSize renderer (fromIntegral w) (fromIntegral h)
                     return ()
-            cb (SDL2Platform renderer window)
+            cb (SDL2Platform renderer window mouseGrab)
 
 eventArrayStaticSize :: Int
 eventArrayStaticSize = 128
@@ -266,7 +268,7 @@ instance Platform SDL2Platform where
   freeSource _ = audioFreeSource
   playBuffer _ b pm = audioPlayBuffer b pm
   sourceIsStopped _ = audioSourceIsStopped
-  pollEvents _ = mapMaybe (^. fromSdlEvent) <$> sdlPollEvents
+  pollEvents p = mapMaybe (^. fromSdlEvent (p ^. sdlpMouseGrabMode)) <$> sdlPollEvents
   loadFont _ _ _ = return 1
   freeFont _ _ = return ()
   renderBegin _ = return ()
