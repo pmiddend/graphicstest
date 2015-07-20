@@ -63,9 +63,13 @@ import qualified SGE.Input (
        , KeyboardPtr
        , KeyboardKey(..)
        , KeyState(..)
+       , MouseAxisCode(..)
+       , MousePtr
        , withCursorButtonCallback
+       , withCursorMoveCallback
        , withKeyCallback
        , withKeyRepeatCallback
+       , withMouseAxisCallback
        )
 
 import qualified SGE.Pos (
@@ -105,6 +109,7 @@ import qualified SGE.Systems (
        , fontSystem
        , imageSystem
        , keyboard
+       , mouse
        , renderer
        , windowSystem
        , with
@@ -133,8 +138,10 @@ import Wrench.Color (
        )
 
 import Wrench.Event (
-         Event(..)
+         CursorMotionEvent(..)
+       , Event(..)
        , KeyboardEvent(..)
+       , MouseAxisEvent(..)
        , MouseButtonEvent(..)
        )
 
@@ -209,6 +216,9 @@ keyboard p = SGE.Systems.keyboard (p ^. sgepSystem)
 cursor :: SGEPlatform -> SGE.Input.CursorPtr
 cursor p = SGE.Systems.cursor (p ^. sgepSystem)
 
+mouse :: SGEPlatform -> SGE.Input.MousePtr
+mouse p = SGE.Systems.mouse (p ^. sgepSystem)
+
 renderer :: SGEPlatform -> SGE.Renderer.DevicePtr
 renderer p = SGE.Systems.renderer (p ^. sgepSystem)
 
@@ -271,6 +281,13 @@ makeKeyMovement :: SGE.Input.KeyState -> KeyMovement
 makeKeyMovement s = case s of
                 SGE.Input.KeystatePressed -> KeyDown
                 SGE.Input.KeystateReleased -> KeyUp
+
+makeMouseDelta :: SGE.Input.MouseAxisCode -> Int -> Maybe Point
+makeMouseDelta a d = case a of
+               SGE.Input.MouseaxiscodeX -> Just (V2 (fromIntegral d) 0)
+               SGE.Input.MouseaxiscodeY -> Just (V2 0 (fromIntegral d))
+               SGE.Input.MouseaxiscodeWheel -> Nothing
+               SGE.Input.MouseaxiscodeUnknown -> Nothing
 
 makeKeySym :: SGE.Input.KeyboardKey -> Maybe Keysym.Keysym
 makeKeySym s = case s of
@@ -404,6 +421,8 @@ data InputEvent =
      KeyEvent (SGE.Input.KeyboardKey, SGE.Input.KeyState)
      | KeyRepeatEvent SGE.Input.KeyboardKey
      | CursorButtonEvent (SGE.Input.CursorButtonCode, SGE.Input.CursorButtonState, SGE.Pos.Pos)
+     | CursorMoveEvent SGE.Pos.Pos
+     | MouseMoveEvent (SGE.Input.MouseAxisCode, Int)
 
 type Inputs = [InputEvent]
 type InputsRef = IORef Inputs
@@ -418,7 +437,12 @@ makeEvent event = case event of
                          return $ Keyboard (KeyboardEvent KeyDown True keysym)
           CursorButtonEvent (k, s, p) -> do
                             buttonCode <- makeMouseButton k
-                            return  $ MouseButton (MouseButtonEvent buttonCode (makeMouseButtonMovement s) (fromSGEPos p))
+                            return $ MouseButton (MouseButtonEvent buttonCode (makeMouseButtonMovement s) (fromSGEPos p))
+          CursorMoveEvent p -> return $ CursorMotion (CursorMotionEvent (fromSGEPos p))
+          MouseMoveEvent (a, d) -> do
+                         delta <- makeMouseDelta a d
+                         return $ MouseAxis (MouseAxisEvent delta)
+
 
 makeInputResults :: SGEPlatform -> InputsRef -> IO [Event]
 makeInputResults p inputs = do
@@ -436,6 +460,12 @@ appendInput inputs input = do
 
 cursorButtonCallback :: InputsRef -> SGE.Input.CursorButtonCode -> SGE.Input.CursorButtonState -> SGE.Pos.Pos -> IO ()
 cursorButtonCallback inputs code status pos = appendInput inputs (CursorButtonEvent (code, status, pos))
+
+cursorMoveCallback :: InputsRef -> SGE.Pos.Pos -> IO ()
+cursorMoveCallback inputs pos = appendInput inputs (CursorMoveEvent pos)
+
+mouseAxisCallback :: InputsRef -> SGE.Input.MouseAxisCode -> Int -> IO ()
+mouseAxisCallback inputs axis delta = appendInput inputs (MouseMoveEvent (axis, delta))
 
 keyCallback :: InputsRef -> SGE.Input.KeyboardKey -> SGE.Input.KeyState -> IO ()
 keyCallback inputs key status = appendInput inputs (KeyEvent (key, status))
@@ -484,8 +514,10 @@ instance Platform SGEPlatform where
          pollEvents p = do
                     inputs <- newIORef []
                     SGE.Input.withKeyCallback (keyboard p) (keyCallback inputs)
-                                              (SGE.Input.withKeyRepeatCallback (keyboard p) (keyRepeatCallback inputs)
-                                                                               (SGE.Input.withCursorButtonCallback (cursor p) (cursorButtonCallback inputs) (makeInputResults p inputs)))
+                        (SGE.Input.withKeyRepeatCallback (keyboard p) (keyRepeatCallback inputs)
+                             (SGE.Input.withCursorButtonCallback (cursor p) (cursorButtonCallback inputs)
+                                  (SGE.Input.withCursorMoveCallback (cursor p) (cursorMoveCallback inputs)
+                                       (SGE.Input.withMouseAxisCallback (mouse p) (mouseAxisCallback inputs) (makeInputResults p inputs)))))
          renderBegin p = do
                      context <- SGE.Renderer.beginRenderingExn $ renderer p
                      writeIORef (p ^. sgepContext) (Just context)
@@ -512,7 +544,7 @@ instance Platform SGEPlatform where
                                                                        (realToFrac (s ^. spriteRotation ^. getRadians)) tex
 
 withSGEPlatform :: WindowTitle -> WindowSize -> MouseGrabMode -> (SGEPlatform -> IO ()) -> IO ()
-withSGEPlatform windowTitle size mouse cb =
-                SGE.Systems.with (T.unpack (unpackWindowTitle windowTitle)) (windowSizeToMaybe size) (makeCursorOption mouse) $ \system -> do
+withSGEPlatform windowTitle size cursorOption cb =
+                SGE.Systems.with (T.unpack (unpackWindowTitle windowTitle)) (windowSizeToMaybe size) (makeCursorOption cursorOption) $ \system -> do
                                  context <- newIORef Nothing
                                  cb (SGEPlatform system context size)
