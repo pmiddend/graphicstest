@@ -3,8 +3,7 @@
 {-# LANGUAGE RankNTypes                 #-}
 {-# LANGUAGE TemplateHaskell            #-}
 module Wrench.Engine(
-    Event(..)
-  , withPlatform
+    withPlatform
   , wrenchRender
   , PlatformBackend
   ) where
