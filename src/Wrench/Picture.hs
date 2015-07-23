@@ -1,46 +1,56 @@
-module Wrench.Picture(Picture,pictureLine,pictureText,pictureSprite,pictureSpriteResampled,pictureBlank,pictureInColor,pictureTranslated,pictureRotated,pictures,pictureScaled,pictureSpriteCentered,pictureSpriteTopLeft) where
+module Wrench.Picture(
+    Picture
+  , pictureText
+  , pictureSprite
+  , pictureSpriteResampled
+  , pictureBlank
+  , pictureInColor
+  , pictureTranslated
+  , pictureRotated
+  , pictures
+  , pictureScaled
+  , pictureSpriteCentered
+  , pictureSpriteTopLeft
+  ) where
 
-import Wrench.Internal.Picture
-import Wrench.Point
-import Wrench.Color
-import Wrench.SpriteIdentifier
-import Wrench.Angular
-import Wrench.RenderPositionMode
-import ClassyPrelude
+import           ClassyPrelude
+import           Linear.V2                 (V2)
+import           Wrench.Angular
+import           Wrench.Color
+import           Wrench.Internal.Picture
+import           Wrench.RenderPositionMode
+import           Wrench.SpriteIdentifier
 
-pictureLine :: Point -> Point -> Picture
-pictureLine = Line
-
-pictureText :: Text -> Picture
+pictureText :: Text -> Picture a
 pictureText = Text
 
-pictureSpriteResampled :: SpriteIdentifier -> RenderPositionMode -> Point -> Picture
+pictureSpriteResampled :: SpriteIdentifier -> RenderPositionMode -> (V2 a) -> Picture a
 pictureSpriteResampled identifier positionMode newSize = Sprite identifier positionMode (Just newSize)
 
-pictureSprite :: SpriteIdentifier -> RenderPositionMode -> Picture
+pictureSprite :: SpriteIdentifier -> RenderPositionMode -> Picture a
 pictureSprite identifier positionMode = Sprite identifier positionMode Nothing
 
-pictureSpriteCentered :: SpriteIdentifier -> Picture
+pictureSpriteCentered :: SpriteIdentifier -> Picture a
 pictureSpriteCentered identifier = Sprite identifier RenderPositionCenter Nothing
 
-pictureSpriteTopLeft :: SpriteIdentifier -> Picture
+pictureSpriteTopLeft :: SpriteIdentifier -> Picture a
 pictureSpriteTopLeft identifier = Sprite identifier RenderPositionTopLeft Nothing
 
-pictureBlank :: Picture
+pictureBlank :: Picture a
 pictureBlank = Blank
 
-pictureInColor :: Color -> Picture -> Picture
+pictureInColor :: Color -> Picture a -> Picture a
 pictureInColor = InColor
 
-pictureTranslated :: Point -> Picture -> Picture
+pictureTranslated :: (V2 a) -> Picture a -> Picture a
 pictureTranslated = Translate
 
-pictureRotated :: Radians -> Picture -> Picture
+pictureRotated :: Radians -> Picture a -> Picture a
 pictureRotated = Rotate
 
-pictureScaled :: Point -> Picture -> Picture
+pictureScaled :: (V2 a) -> Picture a -> Picture a
 pictureScaled = Scale
 
-pictures :: [Picture] -> Picture
+pictures :: [Picture a] -> Picture a
 pictures = Pictures
 

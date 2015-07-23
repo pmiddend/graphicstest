@@ -1,38 +1,39 @@
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE TypeFamilies               #-}
 module Wrench.Platform where
 
-import           ClassyPrelude hiding(FilePath,(</>))
+import           ClassyPrelude    hiding (FilePath, (</>))
+import           Control.Lens.TH
 import qualified Data.Text        as T
+import           Linear.V2        (V2)
+import           System.FilePath
 import           Wrench.Angular
 import           Wrench.Color
 import           Wrench.Event
-import           Wrench.Point
 import           Wrench.PlayMode
+import           Wrench.Point
 import           Wrench.Rectangle
-import Control.Lens.TH
-import System.FilePath
 
 newtype WindowTitle = WindowTitle { unpackWindowTitle :: T.Text } deriving(IsString)
 type SrcRect = Rectangle
 type DestRect = Rectangle
 type FontSize = Int
 
-data SpriteInstance image = SpriteInstance {
-    _spriteImage :: image
-  , _spriteSrcRect :: Rectangle
-  , _spriteDestRect :: Rectangle
-  , _spriteRotation :: Radians
+data SpriteInstance image a b = SpriteInstance {
+    _spriteImage    :: image
+  , _spriteSrcRect  :: Rectangle a
+  , _spriteDestRect :: Rectangle a
+  , _spriteRotation :: Radians b
   }
 
 $(makeLenses ''SpriteInstance)
 
-data TextInstance font = TextInstance {
-    _textFont :: font
-  , _textContent :: T.Text
-  , _textColor :: Color
-  , _textPosition :: Point
+data TextInstance font a = TextInstance {
+    _textFont     :: font
+  , _textContent  :: T.Text
+  , _textColor    :: Color
+  , _textPosition :: V2 a
   }
 
 $(makeLenses ''TextInstance)
@@ -55,6 +56,6 @@ class Platform p where
   renderBegin :: p -> IO ()
   renderClear :: p -> Color -> IO ()
   renderFinish :: p -> IO ()
-  renderText :: p -> [TextInstance (PlatformFont p)] -> IO ()
+  renderText :: p -> [TextInstance (PlatformFont p) a] -> IO ()
   viewportSize :: p -> IO Point
-  renderSprites :: p -> [SpriteInstance (PlatformImage p)] -> IO ()
+  renderSprites :: (RealFloat b,Num a,Integral a) => p -> [SpriteInstance (PlatformImage p) a b] -> IO ()

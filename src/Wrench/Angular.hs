@@ -1,23 +1,22 @@
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TemplateHaskell            #-}
 module Wrench.Angular where
 
-import           Control.Lens.TH           (makeLenses)
-import Wrench.FloatType
-import           Control.Lens.Iso          (Iso', iso)
-import ClassyPrelude
+import           ClassyPrelude
+import           Control.Lens.Iso (Iso', iso)
+import           Control.Lens.TH  (makeLenses)
 
-newtype Radians = Radians { _getRadians :: FloatType } deriving(Show,Eq,Num)
+newtype Radians a = Radians { _getRadians :: a } deriving(Show,Eq,Num)
 $(makeLenses ''Radians)
-newtype Degrees = Degrees { _getDegrees :: FloatType } deriving(Show,Eq,Num)
+newtype Degrees a = Degrees { _getDegrees :: a } deriving(Show,Eq,Num)
 $(makeLenses ''Degrees)
 
-degrees :: Iso' Radians Degrees
+degrees :: (Num a,Floating a) => Iso' (Radians a) (Degrees a)
 degrees = iso radToDeg degToRad
 
-degToRad :: Degrees -> Radians
+degToRad :: (Num a,Floating a) => (Degrees a) -> (Radians a)
 degToRad (Degrees x) = Radians (x * pi / 180)
 
-radToDeg :: Radians -> Degrees
+radToDeg :: (Num a,Floating a) => (Radians a) -> (Degrees a)
 radToDeg (Radians x) = Degrees (x * 180 / pi)
 

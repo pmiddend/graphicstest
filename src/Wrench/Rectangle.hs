@@ -1,4 +1,4 @@
-{-# LANGUAGE  TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell #-}
 module Wrench.Rectangle(
       Rectangle
     , rectLeftTop
@@ -14,43 +14,41 @@ module Wrench.Rectangle(
     , rectDimensions
     ) where
 
-import Wrench.Point
-import Wrench.FloatType
-import Control.Lens.TH
-import Control.Lens.Getter(to,Getter)
-import Linear.V2
-import ClassyPrelude
+import           ClassyPrelude
+import           Control.Lens.Getter (Getter, to)
+import           Control.Lens.TH
+import           Linear.V2
 
-data Rectangle = Rectangle { _rectLeftTop     :: Point
-                           , _rectRightBottom :: Point
-                           } deriving(Show,Eq)
+data Rectangle a = Rectangle { _rectLeftTop     :: (V2 a)
+                             , _rectRightBottom :: (V2 a)
+                             } deriving(Show,Eq)
 
 $(makeLenses ''Rectangle)
 
-rectLeft :: Getter Rectangle FloatType
+rectLeft :: Getter (Rectangle a) a
 rectLeft = rectLeftTop . _x
 
-rectTop :: Getter Rectangle FloatType
+rectTop :: Getter (Rectangle a) a
 rectTop = rectLeftTop . _y
 
-rectRight :: Getter Rectangle FloatType
+rectRight :: Getter (Rectangle a) a
 rectRight = rectRightBottom . _x
 
-rectBottom :: Getter Rectangle FloatType
+rectBottom :: Getter (Rectangle a) a
 rectBottom = rectRightBottom . _y
 
-rectFromPoints :: Point -> Point -> Rectangle
+rectFromPoints :: V2 a -> V2 a -> Rectangle a
 rectFromPoints = Rectangle
 
-rectFromOriginAndDim :: Point -> Point -> Rectangle
+rectFromOriginAndDim :: Num a => V2 a -> V2 a -> Rectangle a
 rectFromOriginAndDim origin dim = rectFromPoints origin (origin + dim)
 
-rectDimensions :: Getter Rectangle Point
+rectDimensions :: Num a => Getter (Rectangle a) (V2 a)
 rectDimensions = to rectDimensions'
  where rectDimensions' (Rectangle lt rb) = rb - lt
 
-rectWidth :: Getter Rectangle FloatType
+rectWidth :: Num a => Getter (Rectangle a) a
 rectWidth = rectDimensions . _x
 
-rectHeight :: Getter Rectangle FloatType
+rectHeight :: Num a => Getter (Rectangle a) a
 rectHeight = rectDimensions . _y

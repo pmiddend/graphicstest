@@ -19,7 +19,6 @@ import           Numeric.Lens                     (dividing)
 import           Wrench.Angular
 import           Wrench.Color
 import           Wrench.Event
-import           Wrench.FloatType                 (FloatType)
 import           Wrench.ImageData
 import           Wrench.Internal.Picture
 import           Wrench.MouseGrabMode
@@ -48,54 +47,54 @@ toV2 :: Getter (V3 a) (V2 a)
 toV2 = to toV2'
   where toV2' (V3 x y _) = V2 x y
 
-mkTranslation :: Point -> M33 FloatType
+mkTranslation :: Num a => V2 a -> M33 a
 mkTranslation p = V3 (V3 1 0 (p ^. _x)) (V3 0 1 (p ^. _y)) (V3 0 0 1)
 
-mkRotation :: FloatType -> M33 FloatType
+mkRotation :: (Num a,Floating a) => a -> M33 a
 mkRotation r = V3 (V3 cs (-sn) 0) (V3 sn cs 0) (V3 0 0 1)
   where cs = cos r
         sn = sin r
 
-mkScale :: Point -> M33 FloatType
+mkScale :: Num a => V2 a -> M33 a
 mkScale p = V3 (V3 (p ^. _x) 0 0) (V3 0 (p ^. _y) 0) (V3 0 0 1)
 
 -- mkTransformation :: FloatType -> Point -> M33 FloatType
 -- mkTransformation r p = mkTranslation p !*! mkRotation r
 
-data RenderState i f = RenderState { _rsTransformation :: M33 FloatType
-                                   , _rsSurfaceData    :: SurfaceMap i
-                                   , _rsFont           :: f
-                                   , _rsColor          :: Color
-                                   , _rsRotation       :: Radians
-                                 }
+data RenderState i j f a =
+  RenderState { _rsTransformation :: M33 a
+              , _rsSurfaceData    :: SurfaceMap i j
+              , _rsFont           :: f
+              , _rsColor          :: Color
+              , _rsRotation       :: Radians a
+              }
 
 $(makeLenses ''RenderState)
 
-data RenderOperation image font = RenderOperationSprite (SpriteInstance image)
-                                | RenderOperationText (TextInstance font)
+data RenderOperation image font pos rads = RenderOperationSprite (SpriteInstance image pos rads)
+                                         | RenderOperationText (TextInstance font pos)
 
-opToSprite :: RenderOperation image font -> SpriteInstance image
+opToSprite :: RenderOperation image font pos rads -> SpriteInstance image pos rads
 opToSprite (RenderOperationSprite s) = s
 opToSprite (RenderOperationText _) = error "Cannot extract sprite from text"
 
-opToText :: RenderOperation image font -> TextInstance font
+opToText :: RenderOperation image font pos rads -> TextInstance font pos
 opToText (RenderOperationSprite _) = error "Cannot extract text from sprite"
 opToText (RenderOperationText s) = s
 
-executeOperationBatch :: Platform p => p -> [ RenderOperation (PlatformImage p) (PlatformFont p) ] -> IO ()
+executeOperationBatch :: Platform p => p -> [ RenderOperation (PlatformImage p) (PlatformFont p) pos rads ] -> IO ()
 executeOperationBatch p ss@( RenderOperationSprite _ : _ ) = renderSprites p (map opToSprite ss)
 executeOperationBatch p ss@( RenderOperationText _ : _ ) = renderText p (map opToText ss)
 executeOperationBatch _ [] = return ()
 
-equalOperation :: RenderOperation image font -> RenderOperation image font -> Bool
+equalOperation :: RenderOperation image font pos rads -> RenderOperation image font pos rads -> Bool
 equalOperation (RenderOperationSprite _) (RenderOperationSprite _) = True
 equalOperation (RenderOperationText _) (RenderOperationText _) = True
 equalOperation _ _ = False
 
-renderPicture :: RenderState font image -> Picture -> IO [RenderOperation font image]
+renderPicture :: RenderState font pos image a -> Picture pos rads-> IO [RenderOperation font image pos rads]
 renderPicture rs p = case p of
   Blank -> return []
-  Line _ _ -> return [] -- TODO
   --Text s -> renderText (rs ^. rsPlatform) (rs ^. rsFont) (s) (rs ^. rsColor) (((rs ^. rsTransformation) !* V3 0 0 1) ^. toV2)
   Text s -> return [RenderOperationText (TextInstance (rs ^. rsFont) s (rs ^. rsColor) (((rs ^. rsTransformation) !* V3 0 0 1) ^. toV2) )]
   InColor color picture -> renderPicture (rs & rsColor .~ color) picture
@@ -115,7 +114,7 @@ renderPicture rs p = case p of
         destRect = rectFromPoints pos (pos + spriteDim)
     return [RenderOperationSprite (SpriteInstance image srcRect destRect rot)]
 
-wrenchRender :: Platform p => p -> SurfaceMap (PlatformImage p) -> PlatformFont p -> Maybe Color -> Picture -> IO ()
+wrenchRender :: Num a => Platform p => p -> SurfaceMap (PlatformImage p) a -> PlatformFont p -> Maybe Color -> Picture a b -> IO ()
 wrenchRender platform surfaceMap font backgroundColor outerPicture = do
   renderBegin platform
   maybe (return ()) (renderClear platform) backgroundColor
