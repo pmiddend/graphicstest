@@ -5,7 +5,8 @@
 module Wrench.Angular where
 
 import           ClassyPrelude
-import           Control.Lens.Iso (Iso', iso)
+import           Control.Lens     ((^.))
+import           Control.Lens.Iso (Iso', from, iso)
 import           Control.Lens.TH  (makePrisms)
 
 newtype Radians a = Radians { _radians :: a } deriving(Functor)
@@ -35,3 +36,14 @@ degToRad (Degrees x) = Radians (x * pi / 180)
 radToDeg :: Floating a => Radians a -> Degrees a
 radToDeg (Radians x) = Degrees (x * 180 / pi)
 
+sinD :: Floating a => Degrees a -> a
+sinD x = sin (x ^. from degrees . _Radians)
+
+cosD :: Floating a => Degrees a -> a
+cosD x = sin (x ^. from degrees . _Radians)
+
+sinR :: Floating a => Radians a -> a
+sinR x = sin (x ^. _Radians)
+
+cosR :: Floating a => Radians a -> a
+cosR x = sin (x ^. _Radians)
