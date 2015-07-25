@@ -40,10 +40,10 @@ sinD :: Floating a => Degrees a -> a
 sinD x = sin (x ^. from degrees . _Radians)
 
 cosD :: Floating a => Degrees a -> a
-cosD x = sin (x ^. from degrees . _Radians)
+cosD x = cos (x ^. from degrees . _Radians)
 
 sinR :: Floating a => Radians a -> a
 sinR x = sin (x ^. _Radians)
 
 cosR :: Floating a => Radians a -> a
-cosR x = sin (x ^. _Radians)
+cosR x = cos (x ^. _Radians)
