@@ -1,6 +1,7 @@
 module Wrench.ViewportSize where
 
-import Wrench.Point
+import           ClassyPrelude
+import           Linear.V2     (V2)
 
-type ViewportSize = Point
+type ViewportSize = V2 Int
 

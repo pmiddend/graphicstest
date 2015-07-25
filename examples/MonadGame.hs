@@ -3,7 +3,6 @@ module Main where
 import           ClassyPrelude
 import           Control.Lens           (filtered, has)
 import           Wrench.Color
-import           Wrench.Engine
 import           Wrench.Event
 import qualified Wrench.Keysym          as Key
 import           Wrench.MonadGame

@@ -19,6 +19,7 @@ import           Control.Monad.Writer.Lazy      (WriterT)
 import qualified Data.Map.Strict                as M
 import           Data.Maybe                     (fromJust)
 import qualified Data.Set                       as S
+import           Linear.V2
 import           System.FilePath
 import           System.Random                  (StdGen, getStdGen)
 import           Wrench.Animation
@@ -38,7 +39,6 @@ import           Wrench.Picture
 import           Wrench.Platform                (Platform)
 import qualified Wrench.Platform                as P
 import           Wrench.PlayMode
-import           Wrench.Point
 import           Wrench.Rectangle
 import           Wrench.RenderBlockMode
 import           Wrench.Time
@@ -50,18 +50,18 @@ class MonadGame m where
   gplaySound :: SoundId -> m ()
   gupdateKeydowns :: [Event] -> m ()
   gcurrentTicks :: m TimeTicks
-  grenderText :: FontPrefix -> Spacing -> Text -> m RenderResult
+  grenderText :: Num unit => FontPrefix -> unit -> Text -> m (RenderResult unit float)
   gcurrentTimeDelta :: m TimeDelta
   gcurrentKeydowns :: m Keydowns
-  gviewportSize :: m Point
-  grender :: Picture -> m ()
+  gviewportSize :: m (V2 Int)
+  grender :: (Floating float,RealFrac float,Integral unit) => Picture unit float -> m ()
   glookupAnim :: AnimId -> m (Maybe Animation)
-  glookupImageRectangle :: ImageId -> m (Maybe Rectangle)
+  glookupImageRectangle :: ImageId -> m (Maybe (Rectangle Int))
 
 glookupAnimUnsafe :: (Functor m,MonadGame m) => AnimId -> m Animation
 glookupAnimUnsafe anim = fromJust <$> glookupAnim anim
 
-glookupImageRectangleUnsafe :: (Functor m,MonadGame m) => ImageId -> m Rectangle
+glookupImageRectangleUnsafe :: (Functor m,MonadGame m) => ImageId -> m (Rectangle Int)
 glookupImageRectangleUnsafe im = fromJust <$> glookupImageRectangle im
 
 data GameData p = GameData {

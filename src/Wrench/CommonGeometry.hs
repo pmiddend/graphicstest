@@ -3,25 +3,23 @@ module Wrench.CommonGeometry where
 import           ClassyPrelude
 import           Control.Lens     ((^.))
 import           Linear.V2
-import           Wrench.FloatType
-import           Wrench.Point
 import           Wrench.Rectangle
 
-pointOp :: (FloatType -> FloatType -> Bool) -> Point -> Point -> Bool
+pointOp :: (a -> a -> Bool) -> V2 a -> V2 a -> Bool
 pointOp f (V2 x1 y1) (V2 x2 y2) = x1 `f` x2 && y1 `f` y2
 
-pointGE :: Point -> Point -> Bool
+pointGE :: Ord a => V2 a -> V2 a -> Bool
 pointGE a b = pointOp (>=) a b
 
-pointLE :: Point -> Point -> Bool
+pointLE :: Ord a => V2 a -> V2 a -> Bool
 pointLE a b = pointOp (<=) a b
 
-pointL :: Point -> Point -> Bool
+pointL :: Ord a => V2 a -> V2 a -> Bool
 pointL a b = pointOp (<) a b
 
-pointG :: Point -> Point -> Bool
+pointG :: Ord a => V2 a -> V2 a -> Bool
 pointG a b = pointOp (>) a b
 
-pointInRectangle :: Point -> Rectangle -> Bool
+pointInRectangle :: Ord a => V2 a -> Rectangle a -> Bool
 pointInRectangle point rect = point `pointGE` (rect ^. rectLeftTop) && point `pointLE` (rect ^. rectRightBottom)
 

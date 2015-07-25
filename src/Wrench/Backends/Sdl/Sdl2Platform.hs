@@ -18,7 +18,7 @@ import qualified Graphics.UI.SDL.Enum                as SDLEnum
 import qualified Graphics.UI.SDL.Event               as SDLE
 import qualified Graphics.UI.SDL.Types               as SDLT
 import qualified Graphics.UI.SDL.Video               as SDLV
-import           Linear.V2                           (V2 (..), _x, _y)
+import           Linear.V2                           (V2 (..))
 import           Wrench.Angular
 import           Wrench.Color
 import           Wrench.Event
@@ -94,14 +94,14 @@ withAudio f = f (error "null backend doesn't have a context/device") (error "nul
 floored :: (RealFrac a,Integral b) => Getter a b
 floored = to floor
 
-toSdlRect :: Rectangle -> SDLT.Rect
+toSdlRect :: Integral a => Rectangle a -> SDLT.Rect
 toSdlRect r = SDLT.Rect
-              (r ^. rectLeftTop ^. _x ^. floored)
-              (r ^. rectLeftTop ^. _y ^. floored)
-              (r ^. rectDimensions ^. _x ^. floored)
-              (r ^. rectDimensions ^. _y ^. floored)
+              (r ^. rectLeft . to fromIntegral)
+              (r ^. rectTop . to fromIntegral)
+              (r ^. rectWidth . to fromIntegral)
+              (r ^. rectHeight . to fromIntegral)
 
-fromSdlRect :: SDLT.Rect -> Rectangle
+fromSdlRect :: Integral a => SDLT.Rect -> Rectangle a
 fromSdlRect (SDLT.Rect x y w h) = rectFromPoints (V2 (fromIntegral x) (fromIntegral y)) (V2 (fromIntegral (x + w)) (fromIntegral (y + h)))
 
 fromSdlColor :: SDLT.Color -> Color
@@ -110,7 +110,7 @@ fromSdlColor (SDLT.Color r g b a) = mkColorFromRgba r g b a
 toSdlColor :: Color -> SDLT.Color
 toSdlColor c = SDLT.Color (c ^. colorRed) (c ^. colorGreen) (c ^. colorBlue) (c ^. colorAlpha)
 
-wrenchRect :: Iso' SDLT.Rect Rectangle
+wrenchRect :: Integral a => Iso' SDLT.Rect (Rectangle a)
 wrenchRect = iso fromSdlRect toSdlRect
 
 wrenchColor :: Iso' SDLT.Color Color
@@ -302,7 +302,7 @@ instance Platform SDL2Platform where
           (sprite ^. spriteImage)
           srcRectPtr
           destRectPtr
-          (CDouble (sprite ^. spriteRotation ^. degrees ^. getDegrees))
+          (CDouble (realToFrac (sprite ^. spriteRotation ^. degrees ^. _Degrees)))
           nullPtr
           flipFlags
         return ()

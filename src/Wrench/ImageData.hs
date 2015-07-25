@@ -18,21 +18,21 @@ module Wrench.ImageData(
   imageDescToMaps
   ) where
 
-import           ClassyPrelude hiding(FilePath,(</>))
-import qualified Data.Text as T
-import System.FilePath
+import           ClassyPrelude      hiding (FilePath, (</>))
+import qualified Data.Map.Strict    as M
+import qualified Data.Text          as T
+import           System.FilePath
+import           Wrench.Animation
+import           Wrench.AnimMap
 import           Wrench.Filesystem
+import           Wrench.ImageId
+import           Wrench.ImageMap
+import           Wrench.ImageParser
 import           Wrench.Rectangle
-import Wrench.ImageParser
-import Wrench.ImageId
-import Wrench.AnimMap
-import Wrench.Animation
-import Wrench.ImageMap
-import qualified Data.Map.Strict           as M
 
 type ImageDescFile = FilePath
 
-type SurfaceData a = (a,Rectangle)
+type SurfaceData a = (a,Rectangle Int)
 
 type SurfaceMap a = Map ImageId (SurfaceData a)
 

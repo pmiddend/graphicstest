@@ -1,39 +1,45 @@
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE TypeFamilies               #-}
 module Wrench.Platform where
 
-import           ClassyPrelude hiding(FilePath,(</>))
+import           ClassyPrelude    hiding (FilePath, (</>))
+import           Control.Lens.TH
 import qualified Data.Text        as T
+import           Linear.V2
+import           System.FilePath
 import           Wrench.Angular
 import           Wrench.Color
 import           Wrench.Event
-import           Wrench.Point
 import           Wrench.PlayMode
 import           Wrench.Rectangle
-import Control.Lens.TH
-import System.FilePath
 
 newtype WindowTitle = WindowTitle { unpackWindowTitle :: T.Text } deriving(IsString)
 type SrcRect = Rectangle
 type DestRect = Rectangle
 type FontSize = Int
 
-data SpriteInstance image = SpriteInstance {
-    _spriteImage :: image
-  , _spriteSrcRect :: Rectangle
-  , _spriteDestRect :: Rectangle
-  , _spriteRotation :: Radians
+data SpriteInstance unit float image = SpriteInstance {
+    _spriteImage    :: image
+  , _spriteSrcRect  :: Rectangle unit
+  , _spriteDestRect :: Rectangle unit
+  , _spriteRotation :: Radians float
   }
 
 $(makeLenses ''SpriteInstance)
 
-data TextInstance font = TextInstance {
-    _textFont :: font
-  , _textContent :: T.Text
-  , _textColor :: Color
-  , _textPosition :: Point
+mapSpriteInstanceUnit :: (a -> b) -> SpriteInstance a float image -> SpriteInstance b float image
+mapSpriteInstanceUnit f (SpriteInstance image srcRect destRect rotation) = SpriteInstance image (f <$> srcRect) (f <$> destRect) rotation
+
+data TextInstance unit font = TextInstance {
+    _textFont     :: font
+  , _textContent  :: T.Text
+  , _textColor    :: Color
+  , _textPosition :: V2 unit
   }
+
+mapTextInstanceUnit :: (a -> b) -> TextInstance a font -> TextInstance b font
+mapTextInstanceUnit f (TextInstance font content color position) = TextInstance font content color (f <$> position)
 
 $(makeLenses ''TextInstance)
 
@@ -55,6 +61,6 @@ class Platform p where
   renderBegin :: p -> IO ()
   renderClear :: p -> Color -> IO ()
   renderFinish :: p -> IO ()
-  renderText :: p -> [TextInstance (PlatformFont p)] -> IO ()
-  viewportSize :: p -> IO Point
-  renderSprites :: p -> [SpriteInstance (PlatformImage p)] -> IO ()
+  renderText :: p -> [TextInstance unit (PlatformFont p)] -> IO ()
+  viewportSize :: p -> IO (V2 Int)
+  renderSprites :: (Integral int,Floating real,Real real) => p -> [SpriteInstance int real (PlatformImage p)] -> IO ()

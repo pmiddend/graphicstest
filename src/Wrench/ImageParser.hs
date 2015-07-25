@@ -7,17 +7,16 @@ module Wrench.ImageParser(DataLine(..),readImageDataFromFile,readImageDataFromTe
 import           ClassyPrelude        hiding (FilePath, (</>))
 import           Data.Attoparsec.Text (Parser, char, many1, notInClass,
                                        parseOnly, satisfy, scientific, sepBy1)
+import           Data.Scientific      (Scientific, toBoundedInteger)
 import qualified Data.Text.IO         as TIO
 import           Linear.V2            (V2 (..))
 import           System.FilePath
 import           Wrench.Animation
 import           Wrench.AnimId
 import           Wrench.ImageId
-import           Wrench.Point
 import           Wrench.Rectangle
-import Data.Scientific(Scientific,toBoundedInteger,toRealFloat)
 
-data DataLine = DataLineImage (ImageId,Rectangle)
+data DataLine = DataLineImage (ImageId,Rectangle Int)
               | DataLineAnim (AnimId,Animation) deriving(Eq,Show)
 
 readImageDataFromFile :: MonadIO m => FilePath -> m [DataLine]
@@ -38,19 +37,21 @@ intOrError s =
     Nothing -> error $ "scientific \"" <> show s <>"\" is not an integer"
     Just s' -> s'
 
+{-
 realFloatOrError :: RealFloat i => Scientific -> i
 realFloatOrError s = toRealFloat s
+
+scientificRealFloat :: RealFloat i => Parser i
+scientificRealFloat = realFloatOrError <$> scientific
+-}
 
 scientificBoundedInt :: (Integral i,Bounded i) => Parser i
 scientificBoundedInt = intOrError <$> scientific
 
-scientificRealFloat :: RealFloat i => Parser i
-scientificRealFloat = realFloatOrError <$> scientific
+point :: Parser (V2 Int)
+point = V2 <$> scientificBoundedInt <*> (char ',' *> scientificBoundedInt)
 
-point :: Parser Point
-point = V2 <$> scientificRealFloat <*> (char ',' *> scientificRealFloat)
-
-rectangle :: Parser Rectangle
+rectangle :: Parser (Rectangle Int)
 rectangle = rectFromPoints <$> point <*> (char ',' *> point)
 
 imageDataLineC :: Parser DataLine
@@ -59,7 +60,7 @@ imageDataLineC = (char '>' *> (DataLineAnim <$> imageDataLineAnimC)) <|> (DataLi
 stringNotInClass :: String -> Parser Text
 stringNotInClass s = pack <$> many1 (satisfy (notInClass s))
 
-imageDataLineImageC :: Parser (ImageId,Rectangle)
+imageDataLineImageC :: Parser (ImageId,Rectangle Int)
 imageDataLineImageC = (,) <$> stringNotInClass "=\n" <*> (char '=' *> rectangle)
 
 imageDataLineAnimC :: Parser (AnimId,Animation)

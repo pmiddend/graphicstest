@@ -3,11 +3,11 @@ module Wrench.Event where
 
 import           ClassyPrelude
 import           Control.Lens               (makeLenses, makePrisms)
+import           Linear.V2
 import           Wrench.KeyMovement
 import           Wrench.Keysym
 import           Wrench.MouseButton
 import           Wrench.MouseButtonMovement
-import           Wrench.Point
 import           Wrench.Time
 
 data KeyboardEvent = KeyboardEvent {
@@ -21,19 +21,19 @@ $(makeLenses ''KeyboardEvent)
 data MouseButtonEvent = MouseButtonEvent {
     _mouseButton         :: MouseButton
   , _mouseButtonMovement :: MouseButtonMovement
-  , _mousePosition       :: Point
+  , _mousePosition       :: V2 Int
   }
 
 $(makeLenses ''MouseButtonEvent)
 
 data CursorMotionEvent = CursorMotionEvent {
-    _cursorMotionPosition :: Point
+    _cursorMotionPosition :: V2 Int
   }
 
 $(makeLenses ''CursorMotionEvent)
 
 data MouseAxisEvent = MouseAxisEvent {
-    _mouseAxisDelta :: Point
+    _mouseAxisDelta :: V2 Int
   }
 
 $(makeLenses ''MouseAxisEvent)

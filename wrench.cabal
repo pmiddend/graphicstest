@@ -43,10 +43,8 @@ library
                      , Wrench.MediaData
                      , Wrench.AudioData
                      , Wrench.MonadGame
-                     , Wrench.FloatType
                      , Wrench.ImageData
                      , Wrench.Keysym
-                     , Wrench.Point
                      , Wrench.Rectangle
                      , Wrench.Time
                      , Wrench.BitmapFont.Render
@@ -67,7 +65,6 @@ library
                      , Wrench.RenderBlockMode
                      , Wrench.MouseGrabMode
                      , Wrench.Animation
-                     , Wrench.Declarative
                      , Wrench.ViewportSize
                      , Wrench.AnimMap
                      , Wrench.AnimId
@@ -153,24 +150,6 @@ executable example_sound
   -- other-extensions:
   build-depends:       base >=4.7 && <4.9
                      , wrench
-                     , classy-prelude
-  if flag(sge)
-    build-depends:     hsge
-    cpp-options:       -DUSE_SGE
-  -- hs-source-dirs:
-  default-language:    Haskell2010
-  default-extensions: NoImplicitPrelude
-                    , OverloadedStrings
-  ghc-options: -Wall
-
-executable example_main
-  main-is:             Main.hs
-  hs-source-dirs:      examples
-  -- other-extensions:
-  build-depends:       base >=4.7 && <4.9
-                     , wrench
-                     , lens
-                     , linear
                      , classy-prelude
   if flag(sge)
     build-depends:     hsge
