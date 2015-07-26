@@ -61,6 +61,6 @@ class Platform p where
   renderBegin :: p -> IO ()
   renderClear :: p -> Color -> IO ()
   renderFinish :: p -> IO ()
-  renderText :: p -> [TextInstance unit (PlatformFont p)] -> IO ()
+  renderText :: Integral unit => p -> [TextInstance unit (PlatformFont p)] -> IO ()
   viewportSize :: p -> IO (V2 Int)
   renderSprites :: (Integral int,Floating real,Real real) => p -> [SpriteInstance int real (PlatformImage p)] -> IO ()
