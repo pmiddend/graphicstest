@@ -126,7 +126,8 @@ import qualified SGE.Window (
        )
 
 import Wrench.Angular (
-         getRadians
+         degrees
+       , _Degrees
        )
 
 import Wrench.Color (
@@ -180,10 +181,6 @@ import Wrench.Platform (
 
 import Wrench.PlayMode (
          PlayMode(..)
-       )
-
-import Wrench.Point (
-         Point
        )
 
 import Wrench.Rectangle (
@@ -250,19 +247,19 @@ contextError p = do
 toSGEColor :: Color -> SGE.Image.RGBA
 toSGEColor c = SGE.Image.makeRGBA (c ^. colorRed) (c ^. colorBlue) (c ^. colorGreen) (c ^. colorAlpha)
 
-toSGEPos :: Point -> SGE.Pos.Pos
-toSGEPos p = SGE.Pos.Pos (round (p ^._x), round (p ^._y))
+toSGEPos :: Integral a => V2 a -> SGE.Pos.Pos
+toSGEPos p = SGE.Pos.Pos (fromIntegral (p ^._x), fromIntegral (p ^._y))
 
-toSGEDim :: Point -> SGE.Dim.Dim
-toSGEDim p = SGE.Dim.Dim (round (p ^._x), round (p ^._y))
+toSGEDim :: Integral a => V2 a -> SGE.Dim.Dim
+toSGEDim p = SGE.Dim.Dim (fromIntegral (p ^._x), fromIntegral (p ^._y))
 
-toSGERect :: Rectangle -> SGE.Rect.Rect
+toSGERect :: Integral a => Rectangle a -> SGE.Rect.Rect
 toSGERect r = SGE.Rect.Rect (toSGEPos (r ^. rectLeftTop), toSGEDim (r ^. rectDimensions))
 
-fromSGEDim :: SGE.Dim.Dim -> Point
+fromSGEDim :: SGE.Dim.Dim -> V2 Int
 fromSGEDim d = V2 (fromIntegral (SGE.Dim.dimW d)) (fromIntegral (SGE.Dim.dimH d))
 
-fromSGEPos :: SGE.Pos.Pos -> Point
+fromSGEPos :: SGE.Pos.Pos -> V2 Int
 fromSGEPos p = V2 (fromIntegral (SGE.Pos.posX p)) (fromIntegral (SGE.Pos.posY p))
 
 makeMouseButtonMovement :: SGE.Input.CursorButtonState -> MouseButtonMovement
@@ -282,7 +279,7 @@ makeKeyMovement s = case s of
                 SGE.Input.KeystatePressed -> KeyDown
                 SGE.Input.KeystateReleased -> KeyUp
 
-makeMouseDelta :: SGE.Input.MouseAxisCode -> Int -> Maybe Point
+makeMouseDelta :: SGE.Input.MouseAxisCode -> Int -> Maybe (V2 Int)
 makeMouseDelta a d = case a of
                SGE.Input.MouseaxiscodeX -> Just (V2 (fromIntegral d) 0)
                SGE.Input.MouseaxiscodeY -> Just (V2 0 (fromIntegral d))
@@ -541,7 +538,7 @@ instance Platform SGEPlatform where
                        where allocTexture s = snd <$> allocate (SGE.Texture.partRawRectExn (s ^. spriteImage) (toSGERect (s ^. spriteSrcRect))) SGE.Texture.destroyPart
                              translateSprite s tex = SGE.Sprite.Object (toSGEPos (s ^. spriteDestRect ^. rectLeftTop))
                                                                        (toSGEDim (s ^. spriteDestRect ^. rectDimensions))
-                                                                       (realToFrac (s ^. spriteRotation ^. getRadians)) tex
+                                                                       (realToFrac (s ^. spriteRotation ^. degrees ^. _Degrees)) tex
 
 withSGEPlatform :: WindowTitle -> WindowSize -> MouseGrabMode -> (SGEPlatform -> IO ()) -> IO ()
 withSGEPlatform windowTitle size cursorOption cb =
