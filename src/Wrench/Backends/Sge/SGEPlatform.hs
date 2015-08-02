@@ -8,7 +8,7 @@ module Wrench.Backends.Sge.SGEPlatform(
 where
 
 import           ClassyPrelude hiding((</>))
-import           Control.Lens ((^.), _2)
+import           Control.Lens ((^.), to, _2)
 import           Control.Lens.TH (makeLenses)
 import           Control.Monad.Trans.Resource (allocate, runResourceT)
 import qualified Data.Text as T ( unpack )
@@ -126,7 +126,7 @@ import qualified SGE.Window (
        )
 
 import Wrench.Angular (
-         degrees
+         radToDeg
        , _Degrees
        )
 
@@ -538,7 +538,7 @@ instance Platform SGEPlatform where
                        where allocTexture s = snd <$> allocate (SGE.Texture.partRawRectExn (s ^. spriteImage) (toSGERect (s ^. spriteSrcRect))) SGE.Texture.destroyPart
                              translateSprite s tex = SGE.Sprite.Object (toSGEPos (s ^. spriteDestRect ^. rectLeftTop))
                                                                        (toSGEDim (s ^. spriteDestRect ^. rectDimensions))
-                                                                       (realToFrac (s ^. spriteRotation ^. degrees ^. _Degrees)) tex
+                                                                       (realToFrac (s ^. spriteRotation ^. to radToDeg ^. _Degrees)) tex
 
 withSGEPlatform :: WindowTitle -> WindowSize -> MouseGrabMode -> (SGEPlatform -> IO ()) -> IO ()
 withSGEPlatform windowTitle size cursorOption cb =
