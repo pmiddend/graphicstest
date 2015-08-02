@@ -13,9 +13,10 @@ module Wrench.Time(
   , toMilliseconds
 ) where
 
-import           System.Clock (Clock (Monotonic), TimeSpec (TimeSpec), getTime)
-import ClassyPrelude
+import           ClassyPrelude
 import qualified Control.Concurrent as CC
+import           System.Clock       (Clock (Monotonic), TimeSpec (TimeSpec),
+                                     getTime)
 
 newtype TimeDelta = TimeDelta { _timeDelta :: Double } deriving(Show,Num,Eq,Ord)
 newtype TimeTicks = TimeTicks { _timeTicks :: Word64 } deriving(Show,Num,Eq,Ord)
@@ -30,7 +31,7 @@ nanoSecondsDivisor :: Double
 nanoSecondsDivisor = (1000.0 * 1000.0 * 1000.0)
 
 tickDelta :: TimeTicks -> TimeTicks -> TimeDelta
-tickDelta new old = TimeDelta $ fromIntegral (_timeTicks new - _timeTicks old) / nanoSecondsDivisor 
+tickDelta new old = TimeDelta $ fromIntegral (_timeTicks new - _timeTicks old) / nanoSecondsDivisor
 
 plusDuration :: TimeTicks -> TimeDelta -> TimeTicks
 plusDuration t d = TimeTicks (_timeTicks t + floor (_timeDelta d * nanoSecondsDivisor))

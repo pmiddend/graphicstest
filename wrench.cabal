@@ -66,9 +66,9 @@ library
                      , Wrench.Animation
                      , Wrench.ViewportSize
                      , Wrench.AnimMap
-                     , Wrench.AnimId
+                     , Wrench.AnimIdentifier
                      , Wrench.PlayMode
-                     , Wrench.ImageId
+                     , Wrench.ImageIdentifier
                      , Wrench.ImageMap
   build-depends:       base >=4.7 && <4.9
                      , linear

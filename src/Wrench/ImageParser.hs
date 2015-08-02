@@ -4,20 +4,21 @@
 {-# LANGUAGE TupleSections         #-}
 module Wrench.ImageParser(DataLine(..),readImageDataFromFile,readImageDataFromText) where
 
-import           ClassyPrelude        hiding (FilePath, (</>))
-import           Data.Attoparsec.Text (Parser, char, many1, notInClass,
-                                       parseOnly, satisfy, scientific, sepBy1)
-import           Data.Scientific      (Scientific, toBoundedInteger)
-import qualified Data.Text.IO         as TIO
-import           Linear.V2            (V2 (..))
+import           ClassyPrelude          hiding (FilePath, (</>))
+import           Data.Attoparsec.Text   (Parser, char, many1, notInClass,
+                                         parseOnly, satisfy, scientific, sepBy1)
+import           Data.Scientific        (Scientific, toBoundedInteger)
+import qualified Data.Text.IO           as TIO
+import           Linear.V2              (V2 (..))
 import           System.FilePath
 import           Wrench.Animation
-import           Wrench.AnimId
-import           Wrench.ImageId
+import           Wrench.AnimIdentifier
+import           Wrench.ImageIdentifier
 import           Wrench.Rectangle
+import           Wrench.Time
 
-data DataLine = DataLineImage (ImageId,Rectangle Int)
-              | DataLineAnim (AnimId,Animation) deriving(Eq,Show)
+data DataLine = DataLineImage (ImageIdentifier,Rectangle Int)
+              | DataLineAnim (AnimIdentifier,Animation) deriving(Eq,Show)
 
 readImageDataFromFile :: MonadIO m => FilePath -> m [DataLine]
 readImageDataFromFile f = liftM readImageDataFromText ((liftIO . TIO.readFile) f)
@@ -60,8 +61,8 @@ imageDataLineC = (char '>' *> (DataLineAnim <$> imageDataLineAnimC)) <|> (DataLi
 stringNotInClass :: String -> Parser Text
 stringNotInClass s = pack <$> many1 (satisfy (notInClass s))
 
-imageDataLineImageC :: Parser (ImageId,Rectangle Int)
+imageDataLineImageC :: Parser (ImageIdentifier,Rectangle Int)
 imageDataLineImageC = (,) <$> stringNotInClass "=\n" <*> (char '=' *> rectangle)
 
-imageDataLineAnimC :: Parser (AnimId,Animation)
-imageDataLineAnimC = (,) <$> stringNotInClass "=\n" <*> (Animation <$> (char '=' *> scientificBoundedInt <* char '|') <*> sepBy1 (stringNotInClass  ",\n") (char ','))
+imageDataLineAnimC :: Parser (AnimIdentifier,Animation)
+imageDataLineAnimC = (,) <$> stringNotInClass "=\n" <*> (Animation <$> (char '=' *> ((fromMilliseconds . (fromIntegral :: Int -> Double)) <$> scientificBoundedInt) <* char '|') <*> sepBy1 (stringNotInClass  ",\n") (char ','))

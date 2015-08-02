@@ -23,7 +23,7 @@ import           Linear.V2
 import           System.FilePath
 import           System.Random                  (StdGen, getStdGen)
 import           Wrench.Animation
-import           Wrench.AnimId
+import           Wrench.AnimIdentifier
 import           Wrench.AudioData
 import           Wrench.BitmapFont.Render
 import           Wrench.BitmapFont.RenderResult
@@ -47,7 +47,7 @@ import           Wrench.WindowSize
 class MonadGame m where
   gpollEvents :: m [Event]
   gupdateTicks :: Double -> m ()
-  gplaySound :: SoundId -> m ()
+  gplaySound :: SoundIdentifier -> m ()
   gupdateKeydowns :: [Event] -> m ()
   gcurrentTicks :: m TimeTicks
   grenderText :: FontPrefix -> Int -> Text -> m (RenderResult Int float)
@@ -55,13 +55,13 @@ class MonadGame m where
   gcurrentKeydowns :: m Keydowns
   gviewportSize :: m (V2 Int)
   grender :: (Show float,Floating float,RealFrac float,Integral unit) => Picture unit float -> m ()
-  glookupAnim :: AnimId -> m (Maybe Animation)
-  glookupImageRectangle :: ImageId -> m (Maybe (Rectangle Int))
+  glookupAnim :: AnimIdentifier -> m (Maybe Animation)
+  glookupImageRectangle :: ImageIdentifier -> m (Maybe (Rectangle Int))
 
-glookupAnimUnsafe :: (Functor m,MonadGame m) => AnimId -> m Animation
+glookupAnimUnsafe :: (Functor m,MonadGame m) => AnimIdentifier -> m Animation
 glookupAnimUnsafe anim = fromJust <$> glookupAnim anim
 
-glookupImageRectangleUnsafe :: (Functor m,MonadGame m) => ImageId -> m (Rectangle Int)
+glookupImageRectangleUnsafe :: (Functor m,MonadGame m) => ImageIdentifier -> m (Rectangle Int)
 glookupImageRectangleUnsafe im = fromJust <$> glookupImageRectangle im
 
 data GameData p = GameData {

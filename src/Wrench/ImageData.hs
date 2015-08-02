@@ -3,7 +3,7 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TupleSections         #-}
 module Wrench.ImageData(
-  ImageId,
+  ImageIdentifier,
   ImageMap,
   AnimMap,
   animFrameSwitch,
@@ -18,14 +18,14 @@ module Wrench.ImageData(
   imageDescToMaps
   ) where
 
-import           ClassyPrelude      hiding (FilePath, (</>))
-import qualified Data.Map.Strict    as M
-import qualified Data.Text          as T
+import           ClassyPrelude          hiding (FilePath, (</>))
+import qualified Data.Map.Strict        as M
+import qualified Data.Text              as T
 import           System.FilePath
 import           Wrench.Animation
 import           Wrench.AnimMap
 import           Wrench.Filesystem
-import           Wrench.ImageId
+import           Wrench.ImageIdentifier
 import           Wrench.ImageMap
 import           Wrench.ImageParser
 import           Wrench.Rectangle
@@ -34,11 +34,11 @@ type ImageDescFile = FilePath
 
 type SurfaceData a = (a,Rectangle Int)
 
-type SurfaceMap a = Map ImageId (SurfaceData a)
+type SurfaceMap a = Map ImageIdentifier (SurfaceData a)
 
 type ImageLoadFunction m a = FilePath -> m a
 
-findSurfaceUnsafe :: SurfaceMap a -> ImageId -> SurfaceData a
+findSurfaceUnsafe :: SurfaceMap a -> ImageIdentifier -> SurfaceData a
 findSurfaceUnsafe sm im = fromMaybe (error $ "Cannot find image \"" <> T.unpack im <> "\" in " <> (show (keys sm))) (im `M.lookup` sm)
 
 -- Holt alle "Descriptorfiles" (also die mit .txt enden) aus dem Directory
