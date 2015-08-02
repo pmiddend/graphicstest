@@ -169,6 +169,7 @@ import Wrench.MouseGrabMode (
 import Wrench.Platform (
          Platform(..)
        , WindowTitle(..)
+       , spriteColor
        , spriteDestRect
        , spriteImage
        , spriteRotation
@@ -538,7 +539,9 @@ instance Platform SGEPlatform where
                        where allocTexture s = snd <$> allocate (SGE.Texture.partRawRectExn (s ^. spriteImage) (toSGERect (s ^. spriteSrcRect))) SGE.Texture.destroyPart
                              translateSprite s tex = SGE.Sprite.Object (toSGEPos (s ^. spriteDestRect ^. rectLeftTop))
                                                                        (toSGEDim (s ^. spriteDestRect ^. rectDimensions))
-                                                                       (realToFrac (s ^. spriteRotation ^. to radToDeg ^. _Degrees)) tex
+                                                                       (realToFrac (s ^. spriteRotation ^. to radToDeg ^. _Degrees))
+                                                                       tex
+                                                                       (toSGEColor (s ^. spriteColor))
 
 withSGEPlatform :: WindowTitle -> WindowSize -> MouseGrabMode -> (SGEPlatform -> IO ()) -> IO ()
 withSGEPlatform windowTitle size cursorOption cb =
