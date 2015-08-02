@@ -9,6 +9,8 @@ module Wrench.Rectangle(
     , rectBottom
     , rectWidth
     , rectHeight
+    , rectIntCenter
+    , rectFracCenter
     , rectRightBottom
     , rectFromPoints
     , rectFromOriginAndDim
@@ -16,7 +18,7 @@ module Wrench.Rectangle(
     ) where
 
 import           ClassyPrelude
-import           Control.Lens.Getter (Getter, to)
+import           Control.Lens.Getter (Getter, to, (^.))
 import           Control.Lens.TH
 import           Linear.V2
 
@@ -40,6 +42,12 @@ rectBottom = rectRightBottom . _y
 
 rectFromPoints :: V2 a -> V2 a -> Rectangle a
 rectFromPoints = Rectangle
+
+rectIntCenter :: Integral a => Getter (Rectangle a) (V2 a)
+rectIntCenter = to (\r -> r ^. rectLeftTop + ((`div` 2)<$> r ^. rectDimensions))
+
+rectFracCenter :: Fractional a => Getter (Rectangle a) (V2 a)
+rectFracCenter = to (\r -> r ^. rectLeftTop + ((/ 2)<$> r ^. rectDimensions))
 
 rectFromOriginAndDim :: Num a => V2 a -> V2 a -> Rectangle a
 rectFromOriginAndDim origin dim = rectFromPoints origin (origin + dim)

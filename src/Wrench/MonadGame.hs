@@ -50,11 +50,11 @@ class MonadGame m where
   gplaySound :: SoundId -> m ()
   gupdateKeydowns :: [Event] -> m ()
   gcurrentTicks :: m TimeTicks
-  grenderText :: Num unit => FontPrefix -> unit -> Text -> m (RenderResult unit float)
+  grenderText :: FontPrefix -> Int -> Text -> m (RenderResult Int float)
   gcurrentTimeDelta :: m TimeDelta
   gcurrentKeydowns :: m Keydowns
   gviewportSize :: m (V2 Int)
-  grender :: (Floating float,RealFrac float,Integral unit) => Picture unit float -> m ()
+  grender :: (Show float,Floating float,RealFrac float,Integral unit) => Picture unit float -> m ()
   glookupAnim :: AnimId -> m (Maybe Animation)
   glookupImageRectangle :: ImageId -> m (Maybe (Rectangle Int))
 

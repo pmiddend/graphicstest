@@ -1,27 +1,26 @@
-module Wrench.Picture(Picture,pictureText,pictureSprite,pictureSpriteResampled,pictureBlank,pictureInColor,pictureTranslated,pictureRotated,pictures,pictureScaled,pictureSpriteCentered,pictureSpriteTopLeft) where
+module Wrench.Picture(
+    Picture
+  , pictureText
+  , pictureScaled
+  , pictureSprite
+  , pictureBlank
+  , pictureInColor
+  , pictureTranslated
+  , pictureRotated
+  , pictures) where
 
 import           ClassyPrelude
 import           Linear.V2
 import           Wrench.Angular
 import           Wrench.Color
 import           Wrench.Internal.Picture
-import           Wrench.RenderPositionMode
 import           Wrench.SpriteIdentifier
 
 pictureText :: Text -> Picture unit float
 pictureText = Text
 
-pictureSpriteResampled :: SpriteIdentifier -> RenderPositionMode -> V2 unit -> Picture unit float
-pictureSpriteResampled identifier positionMode newSize = Sprite identifier positionMode (Just newSize)
-
-pictureSprite :: SpriteIdentifier -> RenderPositionMode -> Picture unit float
-pictureSprite identifier positionMode = Sprite identifier positionMode Nothing
-
-pictureSpriteCentered :: SpriteIdentifier -> Picture unit float
-pictureSpriteCentered identifier = Sprite identifier RenderPositionCenter Nothing
-
-pictureSpriteTopLeft :: SpriteIdentifier -> Picture unit float
-pictureSpriteTopLeft identifier = Sprite identifier RenderPositionTopLeft Nothing
+pictureSprite :: SpriteIdentifier -> V2 unit -> Picture unit float
+pictureSprite = Sprite
 
 pictureBlank :: Picture unit float
 pictureBlank = Blank

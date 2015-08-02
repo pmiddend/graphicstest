@@ -8,10 +8,11 @@ module Wrench.Color(
   , colorGreen
   , colorBlue
   , colorAlpha
+  , colorsRed
   ) where
 
-import           Control.Lens.TH           (makeLenses)
-import ClassyPrelude
+import           ClassyPrelude
+import           Control.Lens.TH (makeLenses)
 
 data Color = Color { _colorRed   :: Word8
                    , _colorGreen :: Word8
@@ -31,4 +32,5 @@ colorsWhite = mkColorFromRgba 255 255 255 255
 colorsBlack :: Color
 colorsBlack = mkColorFromRgba 0 0 0 255
 
-
+colorsRed :: Color
+colorsRed = mkColorFromRgba 255 0 0 255

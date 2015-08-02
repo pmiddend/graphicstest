@@ -24,12 +24,13 @@ data SpriteInstance unit float image = SpriteInstance {
   , _spriteSrcRect  :: Rectangle unit
   , _spriteDestRect :: Rectangle unit
   , _spriteRotation :: Radians float
+  , _spriteColor    :: Color
   }
 
 $(makeLenses ''SpriteInstance)
 
 mapSpriteInstanceUnit :: (a -> b) -> SpriteInstance a float image -> SpriteInstance b float image
-mapSpriteInstanceUnit f (SpriteInstance image srcRect destRect rotation) = SpriteInstance image (f <$> srcRect) (f <$> destRect) rotation
+mapSpriteInstanceUnit f s@(SpriteInstance{_spriteSrcRect=srcRect,_spriteDestRect=dstRect}) = s{_spriteSrcRect=f <$> srcRect,_spriteDestRect=f <$> dstRect}
 
 data TextInstance unit font = TextInstance {
     _textFont     :: font

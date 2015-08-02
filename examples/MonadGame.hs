@@ -1,13 +1,14 @@
 module Main where
 
 import           ClassyPrelude
-import           Control.Lens           (filtered, has)
+import           Control.Lens           (filtered, has, view)
 import           Wrench.Color
 import           Wrench.Event
 import qualified Wrench.Keysym          as Key
 import           Wrench.MonadGame
 import           Wrench.MouseGrabMode
 import           Wrench.Picture
+import           Wrench.Rectangle       (rectDimensions)
 import           Wrench.RenderBlockMode
 import           Wrench.WindowSize
 
@@ -21,7 +22,8 @@ mainLoop = do
   gupdateTicks 1.0
   gupdateKeydowns events
   unless (spaceKeyPressed events) $ do
-    grender (pictureSpriteTopLeft "car")
+    carImageSize <- (view rectDimensions) <$> glookupImageRectangleUnsafe "car"
+    grender (pictureSprite "car" carImageSize)
     mainLoop
 
 

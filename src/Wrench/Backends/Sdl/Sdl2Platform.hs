@@ -113,6 +113,9 @@ toSdlColor c = SDLT.Color (c ^. colorRed) (c ^. colorGreen) (c ^. colorBlue) (c 
 wrenchRect :: Integral a => Iso' SDLT.Rect (Rectangle a)
 wrenchRect = iso fromSdlRect toSdlRect
 
+wrenchPoint :: Integral a => Iso' SDLT.Point (V2 a)
+wrenchPoint = iso (\(SDLT.Point x y) -> V2 (fromIntegral x) (fromIntegral y)) (\(V2 x y) -> SDLT.Point (fromIntegral x) (fromIntegral y))
+
 wrenchColor :: Iso' SDLT.Color Color
 wrenchColor = iso fromSdlColor toSdlColor
 
@@ -296,15 +299,25 @@ instance Platform SDL2Platform where
         flipFlags = SDLEnum.SDL_FLIP_NONE
         srcRect = sprite ^. spriteSrcRect ^. from wrenchRect
         destRect = sprite ^. spriteDestRect ^. from wrenchRect
-      with srcRect $ \srcRectPtr -> with destRect $ \destRectPtr -> do
+        sc = sprite ^. spriteColor
+--        rotCenter = sprite ^. spriteDestRect . rectIntCenter . from wrenchPoint
+--      with srcRect $ \srcRectPtr -> with destRect $ \destRectPtr -> with rotCenter $ \rotCenterPtr -> do
+      with srcRect $ \srcRectPtr -> with destRect $ \destRectPtr -> alloca $ \rptr -> alloca $ \gptr -> alloca $ \bptr -> do
+        _ <- SDLV.getTextureColorMod (sprite ^. spriteImage) rptr gptr bptr
+        _ <- SDLV.setTextureColorMod (sprite ^. spriteImage) (sc ^. colorRed) (sc ^. colorGreen) (sc ^. colorBlue)
         _ <- SDLV.renderCopyEx
           (p ^. sdlpRenderer)
           (sprite ^. spriteImage)
           srcRectPtr
           destRectPtr
-          (CDouble (realToFrac (sprite ^. spriteRotation ^. degrees ^. _Degrees)))
+          (CDouble (realToFrac (sprite ^. spriteRotation ^. to radToDeg ^. _Degrees)))
+--          rotCenterPtr
           nullPtr
           flipFlags
+        r <- peek rptr
+        g <- peek gptr
+        b <- peek bptr
+        _ <- SDLV.setTextureColorMod (sprite ^. spriteImage) r g b
         return ()
 
 destroyTexture :: SDLT.Texture -> IO ()

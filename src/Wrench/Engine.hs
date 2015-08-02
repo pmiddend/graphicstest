@@ -11,12 +11,11 @@ module Wrench.Engine(
 
 import           Control.Lens                     (Getter, makeLenses,
                                                    makePrisms, to, traversed,
-                                                   (%~), (&), (+~), (.~), (^.),
-                                                   (^..))
+                                                   (%~), (&), (*~), (+~), (.~),
+                                                   (^.), (^..))
 import           Linear.Matrix                    (M33, (!*), (!*!))
 import           Linear.V2                        (V2 (..), _x, _y)
 import           Linear.V3                        (V3 (..))
-import           Numeric.Lens                     (dividing)
 import           Wrench.Angular
 import           Wrench.Color
 import           Wrench.ImageData
@@ -24,7 +23,6 @@ import           Wrench.Internal.Picture
 import           Wrench.MouseGrabMode
 import           Wrench.Platform
 import           Wrench.Rectangle
-import           Wrench.RenderPositionMode
 import           Wrench.WindowSize
 #if defined(USE_SGE)
 import           Wrench.Backends.Sge.SGEPlatform
@@ -66,6 +64,7 @@ data RenderState float image font =
               , _rsFont           :: font
               , _rsColor          :: Color
               , _rsRotation       :: Radians float
+              , _rsScale          :: V2 float
               }
 
 $(makeLenses ''RenderState)
@@ -90,7 +89,7 @@ equalOperation (RenderOperationSprite _) (RenderOperationSprite _) = True
 equalOperation (RenderOperationText _) (RenderOperationText _) = True
 equalOperation _ _ = False
 
-renderPicture :: (RealFrac float,Floating float) => RenderState float font image -> Picture float float -> IO [RenderOperation float float font image]
+renderPicture :: (Show float,RealFrac float,Floating float) => RenderState float font image -> Picture float float -> IO [RenderOperation float float font image]
 renderPicture rs p = case p of
   Blank -> return []
   --Text s -> renderText (rs ^. rsPlatform) (rs ^. rsFont) (s) (rs ^. rsColor) (((rs ^. rsTransformation) !* V3 0 0 1) ^. toV2)
@@ -99,24 +98,30 @@ renderPicture rs p = case p of
   Pictures ps -> concatMapM (renderPicture rs) ps
   Translate point picture -> renderPicture (rs & rsTransformation %~ (!*! mkTranslation point)) picture
   Rotate r picture -> renderPicture (rs & ((rsRotation +~ r) . (rsTransformation %~ (!*! mkRotation (r ^. _Radians))))) picture
-  Scale s picture -> renderPicture (rs & rsTransformation %~ (!*! mkScale s)) picture
-  Sprite identifier positionMode resampledSize -> do
+  Scale s picture -> renderPicture (rs & ((rsScale *~ s) . (rsTransformation %~ (!*! mkScale s)))) picture
+  Sprite identifier resampledSize -> do
     let (image,srcRect) = findSurfaceUnsafe (rs ^. rsSurfaceData) identifier
         m = rs ^. rsTransformation
-        origin = (m !* V3 0 0 1) ^. toV2
-        spriteDim = fromMaybe (srcRect ^. rectDimensions . to (fmap fromIntegral)) resampledSize
-        pos = case positionMode of
-          RenderPositionCenter -> origin - (spriteDim ^. dividing 2)
-          RenderPositionTopLeft -> origin
+--        origin = (m !* (negate ((/2) <$> (resampledSize ^. toV3)))) ^. toV2
+        origin = ((m !* V3 0 0 1) ^. toV2) - resampledSize / 2
         rot = rs ^. rsRotation
-        destRect = rectFromPoints pos (pos + spriteDim)
-    return [RenderOperationSprite (SpriteInstance image (srcRect ^. to (fmap fromIntegral)) destRect rot)]
+        destRect = rectFromOriginAndDim origin ((rs ^. rsScale) * resampledSize)
+    return [RenderOperationSprite (SpriteInstance image (srcRect ^. to (fmap fromIntegral)) destRect rot (rs ^. rsColor))]
 
-wrenchRender :: forall real int.(RealFrac real,Integral int,Floating real,Real real) => Platform p => p -> SurfaceMap (PlatformImage p) -> PlatformFont p -> Maybe Color -> Picture int real -> IO ()
+wrenchRender :: forall real int.(Show real,RealFrac real,Integral int,Floating real,Real real) => Platform p => p -> SurfaceMap (PlatformImage p) -> PlatformFont p -> Maybe Color -> Picture int real -> IO ()
 wrenchRender platform surfaceMap font backgroundColor outerPicture = do
   renderBegin platform
   maybe (return ()) (renderClear platform) backgroundColor
-  operations <- renderPicture (RenderState eye3 surfaceMap font (fromMaybe colorsWhite backgroundColor) 0) (first fromIntegral outerPicture)
+  let
+    initialRenderState = RenderState {
+        _rsTransformation = eye3
+      , _rsSurfaceData = surfaceMap
+      , _rsFont = font
+      , _rsColor = colorsWhite
+      , _rsRotation = 0
+      , _rsScale = V2 1 1
+    }
+  operations <- renderPicture initialRenderState (first fromIntegral outerPicture)
   mapM_ (executeOperationBatch platform . (mapRoUnit (floor :: real -> Int) <$>)) (groupBy equalOperation operations)
   renderFinish platform
 
