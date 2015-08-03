@@ -129,6 +129,7 @@ fromSdlEvent grabMode = to fromSdlEvent'
           case grabMode of
             MouseGrabYes -> Just $ MouseAxis $ MouseAxisEvent{_mouseAxisDelta=V2 (fromIntegral dx) (fromIntegral dy)}
             MouseGrabNo ->  Just $ CursorMotion $ CursorMotionEvent{_cursorMotionPosition=V2 (fromIntegral px) (fromIntegral py)}
+        fromSdlEvent' (SDLT.MouseWheelEvent{SDLT.mouseWheelEventX=wx,SDLT.mouseWheelEventY=wy}) = Just $ MouseWheel $ MouseWheelEvent {_mouseWheelDirection=fromIntegral <$> V2 wx wy}
         fromSdlEvent' _ = Nothing
         fromSdlMouseButton SDLEnum.SDL_BUTTON_LEFT = LeftButton
         fromSdlMouseButton SDLEnum.SDL_BUTTON_MIDDLE = MiddleButton

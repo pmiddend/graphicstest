@@ -26,6 +26,12 @@ data MouseButtonEvent = MouseButtonEvent {
 
 $(makeLenses ''MouseButtonEvent)
 
+data MouseWheelEvent = MouseWheelEvent {
+    _mouseWheelDirection :: V2 Int
+  }
+
+$(makeLenses ''MouseWheelEvent)
+
 data CursorMotionEvent = CursorMotionEvent {
     _cursorMotionPosition :: V2 Int
   }
@@ -43,6 +49,7 @@ data Event =
     | MouseButton MouseButtonEvent
     | CursorMotion CursorMotionEvent
     | MouseAxis MouseAxisEvent
+    | MouseWheel MouseWheelEvent
     | Quit
     | Tick TimeDelta
 

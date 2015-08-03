@@ -2,7 +2,7 @@
 module Main where
 
 import           ClassyPrelude
-import           Control.Lens            (filtered, has, makeLenses, re, (^.))
+import           Control.Lens            (filtered, has, makeLenses, re, (^.),(^..))
 import           Linear.V2
 import           Linear.Vector
 import           Wrench.Angular
@@ -96,8 +96,6 @@ baseImageSize = V2 64 64
 timeScale :: Radians Double
 timeScale = 10
 
-spaceScale = V2 1 1
-
 planetToPicture :: Radians Double -> V2 Double -> Planet -> Picture Double Double
 planetToPicture rot viewportSize p =
   let
@@ -108,26 +106,31 @@ planetToPicture rot viewportSize p =
   in
     (rot * (p ^. planetAroundSunSpeed . re _Radians)) `pictureRotated` (translation `pictureTranslated` ((rot * (p ^. planetAroundItselfSpeed . re _Radians)) `pictureRotated` base))
 
-spaceKeyPressed :: Traversable t => t Event -> Bool
-spaceKeyPressed events = has (traverse . _Keyboard . keySym . filtered (== Key.Space)) events
+programQuitEvents :: Traversable t => t Event -> Bool
+programQuitEvents events = has (traverse . _Keyboard . keySym . filtered (== Key.Space)) events || has (traverse . _Quit) events
 
-mainLoop :: Radians Double -> MonadGameBackend ()
-mainLoop oldRot = do
+applyMouseMotion :: V2 Int -> Int -> Int
+applyMouseMotion (V2 _ y) scale | scale <= y = 1
+                                | otherwise = scale - y
+
+mainLoop :: Radians Double -> Int -> MonadGameBackend ()
+mainLoop oldRot spaceScale = do
   events <- gpollEvents
   gupdateTicks 1.0
   gupdateKeydowns events
   d <- gcurrentTimeDelta
-  unless (spaceKeyPressed events) $ do
+  let newSpaceScale = foldr applyMouseMotion spaceScale (events ^.. traverse . _MouseWheel . mouseWheelDirection)
+  unless (programQuitEvents events) $ do
     viewportSize <- fmap fromIntegral <$> gviewportSize
     let newRot = oldRot + timeScale * (radians (toSeconds d))
     let
       ps = planetToPicture newRot viewportSize <$> planets
       sun = pictureSprite "sun" (baseImageSize ^* 0.1)
-      solarSystem = (viewportSize / 2) `pictureTranslated` (spaceScale `pictureScaled`(pictures ps <> sun))
+      solarSystem = (viewportSize / 2) `pictureTranslated` ((fromIntegral <$> V2 newSpaceScale newSpaceScale) `pictureScaled` (pictures ps <> sun))
     grender (first (floor :: Double -> Int) solarSystem)
-    mainLoop newRot
+    mainLoop newRot newSpaceScale
 
 main :: IO ()
 main =
-  runGame "media" "wrench solar system example" DynamicWindowSize MouseGrabNo (Just colorsBlack) (RenderAndWait 60) (mainLoop 0)
+  runGame "media" "wrench solar system example" DynamicWindowSize MouseGrabNo (Just colorsBlack) (RenderAndWait 60) (mainLoop 0 1)
 
