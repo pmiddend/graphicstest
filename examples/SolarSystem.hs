@@ -27,9 +27,6 @@ data Planet = Planet {
 
 $(makeLenses ''Planet)
 
-vdiv :: Integral a => V2 a -> a -> V2 a
-vdiv a d = (`div` d) <$> a
-
 planets :: [Planet]
 planets = [
     Planet{
@@ -90,12 +87,15 @@ planets = [
     }
   ]
 
+-- The base image size is hard-coded, simply to make the code easier to understand
 baseImageSize :: V2 Double
 baseImageSize = V2 64 64
 
+-- Constant time scale, make the world go round again faster with his (literally!)
 timeScale :: Radians Double
 timeScale = 10
 
+-- Transform a single planet to a picture containing the planet image with the correct distance and rotation.
 planetToPicture :: Radians Double -> V2 Double -> Planet -> Picture Double Double
 planetToPicture rot viewportSize p =
   let
@@ -106,9 +106,11 @@ planetToPicture rot viewportSize p =
   in
     (rot * (p ^. planetAroundSunSpeed . re _Radians)) `pictureRotated` (translation `pictureTranslated` ((rot * (p ^. planetAroundItselfSpeed . re _Radians)) `pictureRotated` base))
 
+-- A quit event is either the space bar pressed or the window manager quit event
 programQuitEvents :: Traversable t => t Event -> Bool
 programQuitEvents events = has (traverse . _Keyboard . keySym . filtered (== Key.Space)) events || has (traverse . _Quit) events
 
+-- Scale by mouse scroll wheel and take care of negative scaling
 applyMouseMotion :: V2 Int -> Int -> Int
 applyMouseMotion (V2 _ y) scale | scale <= y = 1
                                 | otherwise = scale - y
@@ -119,11 +121,11 @@ mainLoop oldRot spaceScale = do
   gupdateTicks 1.0
   gupdateKeydowns events
   d <- gcurrentTimeDelta
-  let newSpaceScale = foldr applyMouseMotion spaceScale (events ^.. traverse . _MouseWheel . mouseWheelDirection)
   unless (programQuitEvents events) $ do
     viewportSize <- fmap fromIntegral <$> gviewportSize
-    let newRot = oldRot + timeScale * (radians (toSeconds d))
     let
+      newSpaceScale = foldr applyMouseMotion spaceScale (events ^.. traverse . _MouseWheel . mouseWheelDirection)
+      newRot = oldRot + timeScale * (radians (toSeconds d))
       ps = planetToPicture newRot viewportSize <$> planets
       sun = pictureSprite "sun" (baseImageSize ^* 0.1)
       solarSystem = (viewportSize / 2) `pictureTranslated` ((fromIntegral <$> V2 newSpaceScale newSpaceScale) `pictureScaled` (pictures ps <> sun))
