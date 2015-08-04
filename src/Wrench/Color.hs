@@ -1,3 +1,8 @@
+{-|
+Module      : Wrench.Color
+Description : A simple type for rgba colors, and accompanying constants
+Maintainer  : pmidden@secure.mailbox.org
+-}
 {-# LANGUAGE TemplateHaskell #-}
 module Wrench.Color(
     Color

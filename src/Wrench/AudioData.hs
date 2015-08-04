@@ -1,6 +1,6 @@
 {-|
 Module      : Wrench.AudioData
-Description : Load audio file descriptions from a text file
+Description : Load audio files from a directory
 Maintainer  : pmidden@secure.mailbox.org
 -}
 module Wrench.AudioData(
@@ -19,10 +19,13 @@ import           Wrench.SoundMap
 loadSoundTuple :: (Applicative m,Functor m,Monad m) => (FilePath -> m a) -> FilePath -> m (SoundIdentifier,a)
 loadSoundTuple loader fn = (,) <$> (pure . pack . dropExtension . takeFileName $ fn) <*> loader fn
 
-readAudioFiles :: (Applicative m,Functor m,MonadIO m) => (FilePath -> m a) -> FilePath -> m (SoundMap a)
+readAudioFiles :: (Applicative m,Functor m,MonadIO m) =>
+                  (FilePath -> m a) -- ^ Audio file loader
+               -> FilePath          -- ^ Root directory
+               -> m (SoundMap a)
 readAudioFiles loader mediaPath = do
   files <- getFilesInDir mediaPath
-  M.fromList <$> (traverse (loadSoundTuple loader) files)
+  M.fromList <$> traverse (loadSoundTuple loader) files
 
 
 
