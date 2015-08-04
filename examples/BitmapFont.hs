@@ -11,6 +11,7 @@ import           Wrench.Event
 import           Wrench.ImageData
 import           Wrench.MediaData
 import           Wrench.MouseGrabMode
+import           Wrench.Picture
 import           Wrench.Platform
 import           Wrench.WindowSize
 
@@ -21,7 +22,7 @@ mainLoop platform images = do
       then return ()
       else do
         let picture = (textToPicture images "djvu" 0 "Füße in Osnabrück") ^. bfrrPicture
-        wrenchRender platform images (error "fonts not loaded") (Just colorsBlack) picture
+        wrenchRender platform images (error "fonts not loaded") (Just colorsBlack) (picture :: Picture Int Double)
         mainLoop platform images
 
 main :: IO ()

@@ -23,7 +23,7 @@ mainLoop = do
   gupdateKeydowns events
   unless (spaceKeyPressed events) $ do
     carImageSize <- (view rectDimensions) <$> glookupImageRectangleUnsafe "car"
-    grender (pictureSprite "car" carImageSize)
+    grender (pictureSprite "car" carImageSize :: Picture Int Float)
     mainLoop
 
 

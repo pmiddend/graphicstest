@@ -10,10 +10,8 @@ import           ClassyPrelude                       hiding (FilePath, Vector,
                                                       lookup, (</>))
 import           Control.Lens                        (Getter, Iso', from, iso,
                                                       makeLenses, to, (^.))
-import           Data.Bits
 import qualified Data.Text                           as T
 import           Foreign.ForeignPtr                  (withForeignPtr)
-import           Foreign.Ptr                         (castPtr)
 import qualified Graphics.UI.SDL.Enum                as SDLEnum
 import qualified Graphics.UI.SDL.Event               as SDLE
 import qualified Graphics.UI.SDL.Types               as SDLT
@@ -42,7 +40,7 @@ import           Foreign.C.Types                     (CDouble (..))
 import           Foreign.Marshal.Alloc               (alloca)
 import           Foreign.Marshal.Array               (allocaArray, peekArray)
 import           Foreign.Marshal.Utils               (with)
-import           Foreign.Ptr                         (Ptr, nullPtr)
+import           Foreign.Ptr                         (Ptr, castPtr, nullPtr)
 import           Foreign.Storable                    (peek)
 import           Wrench.Backends.Sdl.Sdl2AudioLoader
 import           Wrench.Rectangle
@@ -122,14 +120,14 @@ wrenchColor = iso fromSdlColor toSdlColor
 
 fromSdlEvent :: MouseGrabMode -> Getter SDLT.Event (Maybe Event)
 fromSdlEvent grabMode = to fromSdlEvent'
-  where fromSdlEvent' (SDLT.KeyboardEvent _ _ _ state r sym) = Just $ Keyboard $ KeyboardEvent (fromSdlKeyState state) (r /= 0) (fromSdlSym sym)
+  where fromSdlEvent' (SDLT.KeyboardEvent _ _ _ state r sym) = Keyboard <$> liftM (KeyboardEvent (fromSdlKeyState state) (r /= 0)) (fromSdlSym sym)
         fromSdlEvent' (SDLT.QuitEvent{}) = Just Quit
-        fromSdlEvent' (SDLT.MouseButtonEvent{SDLT.mouseButtonEventState=state,SDLT.mouseButtonEventButton=button,SDLT.mouseButtonEventX=x,SDLT.mouseButtonEventY=y}) = Just $ MouseButton $ MouseButtonEvent{_mouseButton=fromSdlMouseButton button,_mouseButtonMovement=fromSdlMouseButtonState state,_mousePosition=fromIntegral <$> V2 x y}
+        fromSdlEvent' (SDLT.MouseButtonEvent{SDLT.mouseButtonEventState=state,SDLT.mouseButtonEventButton=button,SDLT.mouseButtonEventX=x,SDLT.mouseButtonEventY=y}) = Just $ MouseButton MouseButtonEvent{_mouseButton=fromSdlMouseButton button,_mouseButtonMovement=fromSdlMouseButtonState state,_mousePosition=fromIntegral <$> V2 x y}
         fromSdlEvent' (SDLT.MouseMotionEvent{SDLT.mouseMotionEventX=px,SDLT.mouseMotionEventY=py,SDLT.mouseMotionEventXRel=dx,SDLT.mouseMotionEventYRel=dy}) =
           case grabMode of
-            MouseGrabYes -> Just $ MouseAxis $ MouseAxisEvent{_mouseAxisDelta=V2 (fromIntegral dx) (fromIntegral dy)}
-            MouseGrabNo ->  Just $ CursorMotion $ CursorMotionEvent{_cursorMotionPosition=V2 (fromIntegral px) (fromIntegral py)}
-        fromSdlEvent' (SDLT.MouseWheelEvent{SDLT.mouseWheelEventX=wx,SDLT.mouseWheelEventY=wy}) = Just $ MouseWheel $ MouseWheelEvent {_mouseWheelDirection=fromIntegral <$> V2 wx wy}
+            MouseGrabYes -> Just $ MouseAxis MouseAxisEvent{_mouseAxisDelta=V2 (fromIntegral dx) (fromIntegral dy)}
+            MouseGrabNo ->  Just $ CursorMotion CursorMotionEvent{_cursorMotionPosition=V2 (fromIntegral px) (fromIntegral py)}
+        fromSdlEvent' (SDLT.MouseWheelEvent{SDLT.mouseWheelEventX=wx,SDLT.mouseWheelEventY=wy}) = Just $ MouseWheel MouseWheelEvent {_mouseWheelDirection=fromIntegral <$> V2 wx wy}
         fromSdlEvent' _ = Nothing
         fromSdlMouseButton SDLEnum.SDL_BUTTON_LEFT = LeftButton
         fromSdlMouseButton SDLEnum.SDL_BUTTON_MIDDLE = MiddleButton
@@ -140,17 +138,19 @@ fromSdlEvent grabMode = to fromSdlEvent'
         fromSdlMouseButtonState _ = error "Unknown mouse button state"
         fromSdlKeyState k | k == SDLEnum.SDL_RELEASED = KeyUp
                           | k == SDLEnum.SDL_PRESSED = KeyDown
+                          | otherwise = error $ "Unknown key code: " <> show k
         fromSdlSym (SDLT.Keysym _ keycode _) = fromSdlKeycode keycode
-        fromSdlKeycode k | k == SDLEnum.SDLK_UP = Keysym.Up
-                         | k == SDLEnum.SDLK_DOWN = Keysym.Down
-                         | k == SDLEnum.SDLK_LEFT = Keysym.Left
-                         | k == SDLEnum.SDLK_RIGHT = Keysym.Right
-                         | k == SDLEnum.SDLK_RIGHT = Keysym.Right
-                         | k == SDLEnum.SDLK_LGUI = Keysym.LeftGUI
-                         | k == SDLEnum.SDLK_LSHIFT = Keysym.LeftShift
-                         | k == SDLEnum.SDLK_SPACE = Keysym.Space
-                         | k == SDLEnum.SDLK_ESCAPE = Keysym.Escape
-        fromSdlKeycode k = error $ "Unknown keycode, normal " <> show k <> ", scancode " <> show (k .&. (complement (1 `shift` 30)))
+        fromSdlKeycode k | k == SDLEnum.SDLK_UP = Just Keysym.Up
+                         | k == SDLEnum.SDLK_DOWN = Just Keysym.Down
+                         | k == SDLEnum.SDLK_LEFT = Just Keysym.Left
+                         | k == SDLEnum.SDLK_RIGHT = Just Keysym.Right
+                         | k == SDLEnum.SDLK_RIGHT = Just Keysym.Right
+                         | k == SDLEnum.SDLK_LGUI = Just Keysym.LeftGUI
+                         | k == SDLEnum.SDLK_LSHIFT = Just Keysym.LeftShift
+                         | k == SDLEnum.SDLK_SPACE = Just Keysym.Space
+                         | k == SDLEnum.SDLK_ESCAPE = Just Keysym.Escape
+        fromSdlKeycode _ = Nothing
+--        fromSdlKeycode k = error $ "Unknown keycode, normal " <> show k <> ", scancode " <> show (k .&. (complement (1 `shift` 30)))
 
 setRenderDrawColor :: SDLT.Renderer -> Color -> IO ()
 setRenderDrawColor renderer c = do
@@ -199,7 +199,7 @@ withSdlPlatform windowTitle windowSize mouseGrab cb =
     withImgInit $
       withWindow windowSize (unpackWindowTitle windowTitle) mouseGrab $ \window -> do
         when (mouseGrab == MouseGrabYes) (void (SDLE.setRelativeMouseMode True))
-        withRenderer window $ \renderer -> do
+        withRenderer window $ \renderer ->
           withAudio $ \_ _ -> do
             case windowSize of
                 DynamicWindowSize -> return ()
@@ -220,7 +220,7 @@ sdlPollEvents = allocaArray eventArrayStaticSize $ \eventArray -> do
     SDLEnum.SDL_GETEVENT
     SDLEnum.SDL_FIRSTEVENT
     SDLEnum.SDL_LASTEVENT
-  peekArray (fromEnum events) $ eventArray
+  peekArray (fromEnum events) eventArray
 
 imageRgba8Ptr = fst . unsafeToForeignPtr0 . imageData
 imageRgb8Ptr = fst . unsafeToForeignPtr0 . imageData
@@ -235,7 +235,7 @@ imageToSurface (ImageRGBA8 im) = do
     (fromIntegral (imageWidth im))
     (fromIntegral (imageHeight im))
     bitsPerPixel
-    (fromIntegral (imageWidth im * (fromIntegral bytesPerPixel)))
+    (fromIntegral (imageWidth im * fromIntegral bytesPerPixel))
     0x000000FF
     0x0000FF00
     0x00FF0000
@@ -249,7 +249,7 @@ imageToSurface (ImageRGB8 im) = do
     (fromIntegral (imageWidth im))
     (fromIntegral (imageHeight im))
     bitsPerPixel
-    (fromIntegral (imageWidth im * (fromIntegral bytesPerPixel)))
+    (fromIntegral (imageWidth im * fromIntegral bytesPerPixel))
     0x000000FF
     0x0000FF00
     0x00FF0000
@@ -266,11 +266,11 @@ instance Platform SDL2Platform where
     wavFile <- sdl2LoadWave fn
     case wavFile of
       Nothing -> error $ "error loading " <> fn
-      Just wavFile' -> do
+      Just wavFile' ->
         audioBufferFromFile wavFile'
   freeBuffer _ = audioFreeBuffer
   freeSource _ = audioFreeSource
-  playBuffer _ b pm = audioPlayBuffer b pm
+  playBuffer _ = audioPlayBuffer
   sourceIsStopped _ = audioSourceIsStopped
   pollEvents p = mapMaybe (^. fromSdlEvent (p ^. sdlpMouseGrabMode)) <$> sdlPollEvents
   loadFont _ _ _ = return 1
@@ -282,12 +282,12 @@ instance Platform SDL2Platform where
     im' <- readImage fp
     case im' of
       Left e -> error e
-      Right im -> do
+      Right im ->
         bracket
           (imageToSurface im)
           SDLV.freeSurface
           (SDLV.createTextureFromSurface (p ^. sdlpRenderer))
-  freeImage _ texture = SDLV.destroyTexture texture
+  freeImage _ = SDLV.destroyTexture
   renderText _ _ = return ()
   viewportSize p = alloca $ \w -> alloca $ \h -> do
     SDLV.getWindowSize (p ^. sdlpWindow) w h
@@ -322,7 +322,7 @@ instance Platform SDL2Platform where
         return ()
 
 destroyTexture :: SDLT.Texture -> IO ()
-destroyTexture t = SDLV.destroyTexture t
+destroyTexture = SDLV.destroyTexture
 
 withFontInit :: IO a -> IO a
 withFontInit a = a
