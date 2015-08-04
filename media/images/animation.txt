@@ -1,0 +1,17 @@
+frame1=0,0,65,47
+frame2=65,0,130,47
+frame3=130,0,195,47
+frame4=195,0,260,47
+frame5=0,47,65,94
+frame6=65,47,130,94
+frame7=130,47,195,94
+frame8=195,47,260,94
+frame9=0,94,65,141
+frame10=65,94,130,141
+frame11=130,94,195,141
+frame12=195,94,260,141
+frame13=0,141,65,188
+frame14=65,141,130,188
+frame15=130,141,195,188
+frame16=195,141,260,188
+>anim=100|frame1,frame2,frame3,frame4,frame5,frame6,frame7,frame8,frame9,frame10,frame11,frame12,frame13,frame14,frame15,frame16
