@@ -9,11 +9,13 @@ module Wrench.Color(
   , mkColorFromRgba
   , colorsWhite
   , colorsBlack
+  , colorsRed
+  , colorsGreen
+  , colorsBlue
   , colorRed
   , colorGreen
   , colorBlue
   , colorAlpha
-  , colorsRed
   ) where
 
 import           ClassyPrelude
@@ -28,6 +30,7 @@ data Color = Color { _colorRed   :: Word8
 
 $(makeLenses ''Color)
 
+-- | Smart constructor for RGBA colors
 mkColorFromRgba :: Word8 -> Word8 -> Word8 -> Word8 -> Color
 mkColorFromRgba = Color
 
@@ -39,3 +42,9 @@ colorsBlack = mkColorFromRgba 0 0 0 255
 
 colorsRed :: Color
 colorsRed = mkColorFromRgba 255 0 0 255
+
+colorsGreen :: Color
+colorsGreen = mkColorFromRgba 0 255 0 255
+
+colorsBlue :: Color
+colorsBlue = mkColorFromRgba 0 0 255 255

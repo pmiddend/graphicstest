@@ -1,3 +1,17 @@
+{-|
+Module      : Wrench.BitmapFont.Render
+Description : Fucntions for rendering bitmap fonts
+Maintainer  : pmidden@secure.mailbox.org
+
+Bitmap fonts are nothing special in Wrench. They leverage the same
+texture atlasing system that is used for normal images and rendering
+a bitmap font is the same as rendering a collection of sprites. The
+result is a 'Wrench.Picture' which you can move, rotate, etc..
+
+The idea is to load an atlased image file containing the glyphs,
+whose identifiers are prefixed by the font name, and then call
+'textToPicture' to create a picture for a given input text.
+-}
 module Wrench.BitmapFont.Render(
     textToPicture
   , FontPrefix) where
@@ -23,9 +37,14 @@ characterToImage images prefix c =
   in
     maybe (error ("invalid identifier " <> (unpack identifier))) (Just . bimap (const identifier) (view rectDimensions)) (identifier `lookup` images)
 
+-- | Type synonym to make the function signature for 'textToPicture' prettier
 type FontPrefix = Text
 
-textToPicture :: SurfaceMap a -> FontPrefix -> Int -> Text -> RenderResult Int float
+textToPicture :: SurfaceMap a -- ^ Surface map containing the glyphs
+              -> FontPrefix   -- ^ Prefix to map characters to image identifiers
+              -> Int -- ^ Spacing between characters - can be negative 
+              -> Text -- ^ The text to render
+              -> RenderResult Int float
 textToPicture images prefix spacing text =
   let
     fontSize = fromIntegral <$> images ^?! ix (prefix <> "_a") ^. _2
