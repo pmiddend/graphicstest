@@ -1,16 +1,25 @@
 {-|
 Module      : Wrench.BitmapFont.Render
-Description : Fucntions for rendering bitmap fonts
+Description : Functions for rendering bitmap fonts
 Maintainer  : pmidden@secure.mailbox.org
 
 Bitmap fonts are nothing special in Wrench. They leverage the same
 texture atlasing system that is used for normal images and rendering
-a bitmap font is the same as rendering a collection of sprites. The
-result is a 'Wrench.Picture' which you can move, rotate, etc..
+a bitmap font is the same as creating a collection of sprites and
+rendering them. The result is a 'Wrench.Picture' which you can move,
+rotate, etc..
 
 The idea is to load an atlased image file containing the glyphs,
-whose identifiers are prefixed by the font name, and then call
-'textToPicture' to create a picture for a given input text.
+whose identifiers are prefixed by the font name, as in...
+
+@
+myfont_a=0,0,10,10
+myfont_b=10,0,20,10
+...
+@
+
+...and then call 'textToPicture' to build a picture for a given input
+text.
 -}
 module Wrench.BitmapFont.Render(
     textToPicture
@@ -41,7 +50,7 @@ characterToImage images prefix c =
 type FontPrefix = Text
 
 textToPicture :: SurfaceMap a -- ^ Surface map containing the glyphs
-              -> FontPrefix   -- ^ Prefix to map characters to image identifiers
+              -> FontPrefix   -- ^ Prefix to map characters to image identifiers (excluding the underscore character)
               -> Int -- ^ Spacing between characters - can be negative 
               -> Text -- ^ The text to render
               -> RenderResult Int float

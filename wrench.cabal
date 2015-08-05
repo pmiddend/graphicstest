@@ -1,19 +1,35 @@
 name:                wrench
-category:            Graphics
+category:            Game
 version:             0.1.0.0
 license:             GPL-3
 cabal-version:       >=1.10
 license-file:        LICENSE
 author:              Philipp Middendorf
 maintainer:          Philipp Middendorf <pmidden@secure.mailbox.org>
---stability:           provisional (das Feld ist "defunct")
 homepage:            http://github.com/pmiddend/wrench/
 bug-reports:         http://github.com/pmiddend/wrench/issues
 copyright:           Copyright (C) 2014-2015 Philipp Middendorf
 build-type:          Simple
-tested-with:         GHC == 7.8.3
-synopsis:            A small 2D graphics frontend similar to gloss
---description:         
+tested-with:         GHC == 7.8.3, GHC == 7.10.2
+synopsis:            2D graphics and audio framework
+description:
+  `wrench` is a library to ease the development of games featuring 2D
+  graphics, sound and standard input controllers (mouse, keyboard,
+  joystick). It currently has an sdl backend and a sge backend (a custom
+  engine written by a friend of mine).
+            
+  It has multiple layers of abstraction you can choose from. You could
+  use its 'Platform' type to have an abstraction over 2D rendering,
+  image loading and sound and build your own engine on top of that, or
+  you could use the 'MonadGame' monad to have some more facilities
+  like FPS capping, automatic loading of sounds and atlased images.
+
+  @
+  insert example here
+  @
+
+  To get to know wrench, look at the examples. They're small
+  and self-contained.
 
 source-repository head
   type: git
