@@ -13,7 +13,6 @@ import           Wrench.RenderBlockMode
 import           Wrench.WindowSize
 
 spaceKeyPressed :: Traversable t => t Event -> Bool
---spaceKeyPressed events = has (events ^.. traverse . _Keyboard . keySym . filtered (== Space))
 spaceKeyPressed events = has (traverse . _Keyboard . keySym . filtered (== Key.Space)) events
 
 mainLoop :: MonadGameBackend ()

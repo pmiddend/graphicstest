@@ -15,19 +15,46 @@ synopsis:            2D graphics and audio framework
 description:
   `wrench` is a library to ease the development of games featuring 2D
   graphics, sound and standard input controllers (mouse, keyboard,
-  joystick). It currently has an sdl backend and a sge backend (a custom
-  engine written by a friend of mine).
-            
+  joystick). It currently has an SDL2 image backend, uses JuicyPixels for
+  image loading and AL for audio playback. It also has an sge backend (an
+  engine written in C++ by a friend of mine).
+  .          
   It has multiple layers of abstraction you can choose from. You could
   use its 'Platform' type to have an abstraction over 2D rendering,
-  image loading and sound and build your own engine on top of that, or
-  you could use the 'MonadGame' monad to have some more facilities
-  like FPS capping, automatic loading of sounds and atlased images.
-
-  @
-  insert example here
-  @
-
+  image loading and sound and build your own engine on top of that:
+  .
+  > main :: IO ()
+  >   main = withPlatform "window title" DynamicWindowSize MouseGrabNo $ \platform -> do
+  >   image <- loadImage platform "media/tux.png"
+  >   forever $ do
+  >      renderClear platform colorsGreen
+  >      let sourceRectangle = rectFromOriginAndDim (V2 0 0) (V2 32 32)
+  >          destinationRectangle = rectFromOriginAndDim (V2 0 0) (V2 32 32)     
+  >      renderSprites
+  >           platform
+  >           [SpriteInstance image sourceRectangle destinationRectangle]
+  >           (Radians 0)
+  >           colorsWhite
+  >      renderFinish platform
+  .
+  Or you could use the 'MonadGame' monad to have some more facilities
+  like FPS capping, automatic loading of sounds and atlased images:
+  .
+  > spaceKeyPressed :: [Event] -> Bool
+  > spaceKeyPressed events = has (traverse . _Keyboard . keySym . filtered (== Key.Space)) events
+  >
+  > mainLoop = do
+  >  events <- gpollEvents
+  >  unless (spaceKeyPressed events) $ do
+  >    carImageSize <- (view rectDimensions) <$> glookupImageRectangleUnsafe "car"
+  >    grender (pictureSprite "car" carImageSize :: Picture Int Float)
+  >    mainLoop
+  >
+  > main :: IO ()
+  > main = do
+  >    let backgroundColor = colorsBlack
+  >    runGame "media" "window title" DynamicWindowSize MouseGrabNo backgroundColor (RenderAndWait 30) mainLoop
+  .
   To get to know wrench, look at the examples. They're small
   and self-contained.
 
