@@ -1,3 +1,8 @@
+{-|
+Module      : Wrench.Engine
+Description : Functions for initializing a Platform and drawing Pictures
+Maintainer  : pmidden@secure.mailbox.org
+-}
 {-# LANGUAGE CPP                        #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE RankNTypes                 #-}
@@ -108,7 +113,13 @@ renderPicture rs p = case p of
         destRect = rectFromOriginAndDim origin ((rs ^. rsScale) * resampledSize)
     return [RenderOperationSprite (SpriteInstance image (srcRect ^. to (fmap fromIntegral)) destRect rot (rs ^. rsColor))]
 
-wrenchRender :: forall real int.(Show real,RealFrac real,Integral int,Floating real,Real real) => Platform p => p -> SurfaceMap (PlatformImage p) -> PlatformFont p -> Maybe Color -> Picture int real -> IO ()
+-- | Render a 'Picture' using integer coordinates using the given 'Platform'
+wrenchRender :: forall real int p.(Show real,RealFrac real,Integral int,Floating real,Real real,Platform p) => p
+             -> SurfaceMap (PlatformImage p) -- ^ Surfaces to use for the sprite identifiers
+             -> PlatformFont p -- ^ Font to use for font nodes (can be undefined if the picture contains no fonts)
+             -> Maybe Color -- ^ Screen clear color. If this is not given, the screen is not cleared
+             -> Picture int real -- ^ The picture to render
+             -> IO ()
 wrenchRender platform surfaceMap font backgroundColor outerPicture = do
   renderBegin platform
   maybe (return ()) (renderClear platform) backgroundColor
@@ -131,7 +142,12 @@ type PlatformBackend = SGEPlatform
 type PlatformBackend = SDL2Platform
 #endif
 
-withPlatform :: WindowTitle -> WindowSize -> MouseGrabMode -> (PlatformBackend -> IO ()) -> IO ()
+-- | Initialize platform, create a window and execute the function with the platform
+withPlatform :: WindowTitle
+             -> WindowSize -- ^ Constant or dynamic window size
+             -> MouseGrabMode -- ^ Whether to grab the mouse and hide the cursor or not
+             -> (PlatformBackend -> IO ()) -- ^ "Main loop" function
+             -> IO ()
 #if defined(USE_SGE)
 withPlatform = withSGEPlatform
 #else

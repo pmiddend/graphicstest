@@ -1,3 +1,8 @@
+{-|
+Module      : Wrench.ImageData
+Description : Read atlased images/animations from images with text file descriptions
+Maintainer  : pmidden@secure.mailbox.org
+-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
@@ -30,18 +35,23 @@ import           Wrench.ImageMap
 import           Wrench.ImageParser
 import           Wrench.Rectangle
 
+-- ^ Type synonym for image description files
 type ImageDescFile = FilePath
 
+-- ^ Type synonym for an image (however represented) with a rectangle inside of it
 type SurfaceData a = (a,Rectangle Int)
 
+-- ^ Type synonym for image identifiers and their images/rectangles
 type SurfaceMap a = Map ImageIdentifier (SurfaceData a)
 
+-- ^ Type synonym for an image loader
 type ImageLoadFunction m a = FilePath -> m a
 
+-- ^ Find a texture in the surface map, throw a descriptive error if it isn't found
 findSurfaceUnsafe :: SurfaceMap a -> ImageIdentifier -> SurfaceData a
 findSurfaceUnsafe sm im = fromMaybe (error $ "Cannot find image \"" <> T.unpack im <> "\" in " <> (show (keys sm))) (im `M.lookup` sm)
 
--- Holt alle "Descriptorfiles" (also die mit .txt enden) aus dem Directory
+-- ^ Retrieves all "descriptor files" (files ending in .txt with the same name as the image) from the given directory
 getDescFilesInDir :: (Functor m,MonadIO m) => FilePath -> m [ImageDescFile]
 getDescFilesInDir dir = getFilesWithExtInDir dir ".txt"
 

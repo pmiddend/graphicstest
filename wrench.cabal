@@ -56,7 +56,7 @@ description:
   >    runGame "media" "window title" DynamicWindowSize MouseGrabNo backgroundColor (RenderAndWait 30) mainLoop
   .
   To get to know wrench, look at the examples. They're small
-  and self-contained.
+  and self-contained. Otherwise, 'Platform' and 'MonadGame' are good starting points for browsing the documentation.
 
 source-repository head
   type: git
