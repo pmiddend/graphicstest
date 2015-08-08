@@ -1,6 +1,11 @@
+{-|
+Module      : Wrench.Keysym
+Description : Keysyms
+Maintainer  : pmidden@secure.mailbox.org
+-}
 module Wrench.Keysym where
 
-import ClassyPrelude
+import           ClassyPrelude
 
 data Keysym
   = A
