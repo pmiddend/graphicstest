@@ -61,15 +61,15 @@ import qualified SGE.Input (
        , CursorButtonState(..)
        , CursorPtr
        , CursorScrollCode(..)
-       , KeyboardPtr
-       , KeyboardKey(..)
+       , FocusPtr
+       , KeyCode(..)
        , KeyState(..)
        , MouseAxisCode(..)
        , MousePtr
        , withCursorButtonCallback
        , withCursorMoveCallback
        , withCursorScrollCallback
-       , withKeyCallback
+       , withFocusKeyCallback
        , withKeyRepeatCallback
        , withMouseAxisCallback
        )
@@ -108,9 +108,9 @@ import qualified SGE.Systems (
        , audioLoader
        , audioPlayer
        , cursor
+       , focus
        , fontSystem
        , imageSystem
-       , keyboard
        , mouse
        , renderer
        , windowSystem
@@ -211,8 +211,8 @@ audioLoader p = SGE.Systems.audioLoader (p ^. sgepSystem)
 audioPlayer :: SGEPlatform -> SGE.Audio.PlayerPtr
 audioPlayer p = SGE.Systems.audioPlayer (p ^. sgepSystem)
 
-keyboard :: SGEPlatform -> SGE.Input.KeyboardPtr
-keyboard p = SGE.Systems.keyboard (p ^. sgepSystem)
+focus :: SGEPlatform -> SGE.Input.FocusPtr
+focus p = SGE.Systems.focus (p ^. sgepSystem)
 
 cursor :: SGEPlatform -> SGE.Input.CursorPtr
 cursor p = SGE.Systems.cursor (p ^. sgepSystem)
@@ -295,137 +295,137 @@ makeScrollDelta c d = case c of
                 SGE.Input.CursorscrollcodeVertical -> V2 0 (fromIntegral d)
                 SGE.Input.CursorscrollcodeHorizontal -> V2 (fromIntegral d) 0
 
-makeKeySym :: SGE.Input.KeyboardKey -> Maybe Keysym.Keysym
+makeKeySym :: SGE.Input.KeyCode -> Maybe Keysym.Keysym
 makeKeySym s = case s of
-            SGE.Input.KeyboardkeyEscape -> Just Keysym.Escape
-            SGE.Input.KeyboardkeyReturn -> Just Keysym.Return
-            SGE.Input.KeyboardkeyLeftShift -> Just Keysym.LeftShift
-            SGE.Input.KeyboardkeyRightShift -> Just Keysym.RightShift
-            SGE.Input.KeyboardkeyTab -> Just Keysym.Tab
-            SGE.Input.KeyboardkeyBackspace -> Just Keysym.Backspace
-            SGE.Input.KeyboardkeyLeftControl -> Just Keysym.LeftControl
-            SGE.Input.KeyboardkeyRightControl -> Just Keysym.RightControl
-            SGE.Input.KeyboardkeyLeftAlt -> Just Keysym.LeftAlt
-            SGE.Input.KeyboardkeyRightAlt -> Just Keysym.RightAlt
-            SGE.Input.KeyboardkeySpace -> Just Keysym.Space
-            SGE.Input.KeyboardkeyCapital -> Nothing
-            SGE.Input.KeyboardkeyInsert -> Just Keysym.Insert
-            SGE.Input.KeyboardkeyHome -> Just Keysym.Home
-            SGE.Input.KeyboardkeyPageup -> Just Keysym.PageUp
-            SGE.Input.KeyboardkeyDelete -> Just Keysym.Delete
-            SGE.Input.KeyboardkeyEnd -> Just Keysym.End
-            SGE.Input.KeyboardkeyPagedown -> Just Keysym.PageDown
-            SGE.Input.KeyboardkeyLeft -> Just Keysym.Left
-            SGE.Input.KeyboardkeyRight -> Just Keysym.Right
-            SGE.Input.KeyboardkeyUp -> Just Keysym.Up
-            SGE.Input.KeyboardkeyDown -> Just Keysym.Down
-            SGE.Input.KeyboardkeyA -> Just Keysym.A
-            SGE.Input.KeyboardkeyB -> Just Keysym.B
-            SGE.Input.KeyboardkeyC -> Just Keysym.C
-            SGE.Input.KeyboardkeyD -> Just Keysym.D
-            SGE.Input.KeyboardkeyE -> Just Keysym.E
-            SGE.Input.KeyboardkeyF -> Just Keysym.F
-            SGE.Input.KeyboardkeyG -> Just Keysym.G
-            SGE.Input.KeyboardkeyH -> Just Keysym.H
-            SGE.Input.KeyboardkeyI -> Just Keysym.I
-            SGE.Input.KeyboardkeyJ -> Just Keysym.J
-            SGE.Input.KeyboardkeyK -> Just Keysym.K
-            SGE.Input.KeyboardkeyL -> Just Keysym.L
-            SGE.Input.KeyboardkeyM -> Just Keysym.M
-            SGE.Input.KeyboardkeyN -> Just Keysym.N
-            SGE.Input.KeyboardkeyO -> Just Keysym.O
-            SGE.Input.KeyboardkeyP -> Just Keysym.P
-            SGE.Input.KeyboardkeyQ -> Just Keysym.Q
-            SGE.Input.KeyboardkeyR -> Just Keysym.R
-            SGE.Input.KeyboardkeyS -> Just Keysym.S
-            SGE.Input.KeyboardkeyT -> Just Keysym.T
-            SGE.Input.KeyboardkeyU -> Just Keysym.U
-            SGE.Input.KeyboardkeyV -> Just Keysym.V
-            SGE.Input.KeyboardkeyW -> Just Keysym.W
-            SGE.Input.KeyboardkeyX -> Just Keysym.X
-            SGE.Input.KeyboardkeyY -> Just Keysym.Y
-            SGE.Input.KeyboardkeyZ -> Just Keysym.Z
-            SGE.Input.Keyboardkey0 -> Just Keysym.Number0
-            SGE.Input.Keyboardkey1 -> Just Keysym.Number1
-            SGE.Input.Keyboardkey2 -> Just Keysym.Number2
-            SGE.Input.Keyboardkey3 -> Just Keysym.Number3
-            SGE.Input.Keyboardkey4 -> Just Keysym.Number4
-            SGE.Input.Keyboardkey5 -> Just Keysym.Number5
-            SGE.Input.Keyboardkey6 -> Just Keysym.Number6
-            SGE.Input.Keyboardkey7 -> Just Keysym.Number7
-            SGE.Input.Keyboardkey8 -> Just Keysym.Number8
-            SGE.Input.Keyboardkey9 -> Just Keysym.Number9
-            SGE.Input.KeyboardkeyF1 -> Just Keysym.F1
-            SGE.Input.KeyboardkeyF2 -> Just Keysym.F2
-            SGE.Input.KeyboardkeyF3 -> Just Keysym.F3
-            SGE.Input.KeyboardkeyF4 -> Just Keysym.F4
-            SGE.Input.KeyboardkeyF5 -> Just Keysym.F5
-            SGE.Input.KeyboardkeyF6 -> Just Keysym.F6
-            SGE.Input.KeyboardkeyF7 -> Just Keysym.F7
-            SGE.Input.KeyboardkeyF8 -> Just Keysym.F8
-            SGE.Input.KeyboardkeyF9 -> Just Keysym.F9
-            SGE.Input.KeyboardkeyF10 -> Just Keysym.F10
-            SGE.Input.KeyboardkeyF11 -> Just Keysym.F11
-            SGE.Input.KeyboardkeyF12 -> Just Keysym.F12
-            SGE.Input.KeyboardkeyF13 -> Just Keysym.F13
-            SGE.Input.KeyboardkeyF14 -> Just Keysym.F14
-            SGE.Input.KeyboardkeyF15 -> Just Keysym.F15
-            SGE.Input.KeyboardkeyComma -> Just Keysym.Comma
-            SGE.Input.KeyboardkeyColon -> Just Keysym.Colon
-            SGE.Input.KeyboardkeyDecimal -> Just Keysym.DecimalSeparator
-            SGE.Input.KeyboardkeyApostrophe -> Nothing
-            SGE.Input.KeyboardkeyBackslash -> Just Keysym.Backslash
-            SGE.Input.KeyboardkeyGrave -> Nothing
-            SGE.Input.KeyboardkeySubtract -> Just Keysym.Minus
-            SGE.Input.KeyboardkeyLeftBracket -> Just Keysym.LeftBracket
-            SGE.Input.KeyboardkeyRightBracket -> Just Keysym.RightBracket
-            SGE.Input.KeyboardkeySemicolon -> Just Keysym.Semicolon
-            SGE.Input.KeyboardkeySlash -> Just Keysym.Slash
-            SGE.Input.KeyboardkeyUnderline -> Just Keysym.Underscore
-            SGE.Input.KeyboardkeyScroll -> Just Keysym.ScrollLock
-            SGE.Input.KeyboardkeyPause -> Just Keysym.Pause
-            SGE.Input.KeyboardkeyLeftWin -> Nothing
-            SGE.Input.KeyboardkeyRightWin -> Nothing
-            SGE.Input.KeyboardkeyNum0 -> Just Keysym.Keypad0
-            SGE.Input.KeyboardkeyNum1 -> Just Keysym.Keypad1
-            SGE.Input.KeyboardkeyNum2 -> Just Keysym.Keypad2
-            SGE.Input.KeyboardkeyNum3 -> Just Keysym.Keypad3
-            SGE.Input.KeyboardkeyNum4 -> Just Keysym.Keypad4
-            SGE.Input.KeyboardkeyNum5 -> Just Keysym.Keypad5
-            SGE.Input.KeyboardkeyNum6 -> Just Keysym.Keypad6
-            SGE.Input.KeyboardkeyNum7 -> Just Keysym.Keypad7
-            SGE.Input.KeyboardkeyNum8 -> Just Keysym.Keypad8
-            SGE.Input.KeyboardkeyNum9 -> Just Keysym.Keypad9
-            SGE.Input.KeyboardkeyNumComma -> Just Keysym.KeypadPeriod
-            SGE.Input.KeyboardkeyNumEnter -> Just Keysym.KeypadEnter
-            SGE.Input.KeyboardkeyNumEquals -> Nothing
-            SGE.Input.KeyboardkeyNumLock -> Just Keysym.NumLockClear
-            SGE.Input.KeyboardkeyAdd -> Nothing
-            SGE.Input.KeyboardkeyMinus -> Just Keysym.Minus
-            SGE.Input.KeyboardkeyMultiply-> Nothing
-            SGE.Input.KeyboardkeyDivide -> Nothing
-            SGE.Input.KeyboardkeyApps -> Just Keysym.Application
-            SGE.Input.KeyboardkeyCircumflex -> Nothing
-            SGE.Input.KeyboardkeyAt -> Just Keysym.At
-            SGE.Input.KeyboardkeyAx -> Nothing
-            SGE.Input.KeyboardkeyEquals -> Just Keysym.Equals
-            SGE.Input.KeyboardkeyKana -> Nothing
-            SGE.Input.KeyboardkeyKanji -> Nothing
-            SGE.Input.KeyboardkeyConvert -> Nothing
-            SGE.Input.KeyboardkeyNoconvert -> Nothing
-            SGE.Input.KeyboardkeyPeriod -> Just Keysym.Period
-            SGE.Input.KeyboardkeyPower -> Just Keysym.Power
-            SGE.Input.KeyboardkeySleep -> Just Keysym.Sleep
-            SGE.Input.KeyboardkeyStop -> Just Keysym.Stop
-            SGE.Input.KeyboardkeySysrq -> Just Keysym.SysReq
-            SGE.Input.KeyboardkeyPrint -> Just Keysym.PrintScreen
-            SGE.Input.KeyboardkeyUnlabeled -> Nothing
-            SGE.Input.KeyboardkeyYen -> Nothing
-            SGE.Input.KeyboardkeyUnknown -> Nothing
+            SGE.Input.KeycodeEscape -> Just Keysym.Escape
+            SGE.Input.KeycodeReturn -> Just Keysym.Return
+            SGE.Input.KeycodeLeftShift -> Just Keysym.LeftShift
+            SGE.Input.KeycodeRightShift -> Just Keysym.RightShift
+            SGE.Input.KeycodeTab -> Just Keysym.Tab
+            SGE.Input.KeycodeBackspace -> Just Keysym.Backspace
+            SGE.Input.KeycodeLeftControl -> Just Keysym.LeftControl
+            SGE.Input.KeycodeRightControl -> Just Keysym.RightControl
+            SGE.Input.KeycodeLeftAlt -> Just Keysym.LeftAlt
+            SGE.Input.KeycodeRightAlt -> Just Keysym.RightAlt
+            SGE.Input.KeycodeSpace -> Just Keysym.Space
+            SGE.Input.KeycodeCapital -> Nothing
+            SGE.Input.KeycodeInsert -> Just Keysym.Insert
+            SGE.Input.KeycodeHome -> Just Keysym.Home
+            SGE.Input.KeycodePageup -> Just Keysym.PageUp
+            SGE.Input.KeycodeDelete -> Just Keysym.Delete
+            SGE.Input.KeycodeEnd -> Just Keysym.End
+            SGE.Input.KeycodePagedown -> Just Keysym.PageDown
+            SGE.Input.KeycodeLeft -> Just Keysym.Left
+            SGE.Input.KeycodeRight -> Just Keysym.Right
+            SGE.Input.KeycodeUp -> Just Keysym.Up
+            SGE.Input.KeycodeDown -> Just Keysym.Down
+            SGE.Input.KeycodeA -> Just Keysym.A
+            SGE.Input.KeycodeB -> Just Keysym.B
+            SGE.Input.KeycodeC -> Just Keysym.C
+            SGE.Input.KeycodeD -> Just Keysym.D
+            SGE.Input.KeycodeE -> Just Keysym.E
+            SGE.Input.KeycodeF -> Just Keysym.F
+            SGE.Input.KeycodeG -> Just Keysym.G
+            SGE.Input.KeycodeH -> Just Keysym.H
+            SGE.Input.KeycodeI -> Just Keysym.I
+            SGE.Input.KeycodeJ -> Just Keysym.J
+            SGE.Input.KeycodeK -> Just Keysym.K
+            SGE.Input.KeycodeL -> Just Keysym.L
+            SGE.Input.KeycodeM -> Just Keysym.M
+            SGE.Input.KeycodeN -> Just Keysym.N
+            SGE.Input.KeycodeO -> Just Keysym.O
+            SGE.Input.KeycodeP -> Just Keysym.P
+            SGE.Input.KeycodeQ -> Just Keysym.Q
+            SGE.Input.KeycodeR -> Just Keysym.R
+            SGE.Input.KeycodeS -> Just Keysym.S
+            SGE.Input.KeycodeT -> Just Keysym.T
+            SGE.Input.KeycodeU -> Just Keysym.U
+            SGE.Input.KeycodeV -> Just Keysym.V
+            SGE.Input.KeycodeW -> Just Keysym.W
+            SGE.Input.KeycodeX -> Just Keysym.X
+            SGE.Input.KeycodeY -> Just Keysym.Y
+            SGE.Input.KeycodeZ -> Just Keysym.Z
+            SGE.Input.Keycode0 -> Just Keysym.Number0
+            SGE.Input.Keycode1 -> Just Keysym.Number1
+            SGE.Input.Keycode2 -> Just Keysym.Number2
+            SGE.Input.Keycode3 -> Just Keysym.Number3
+            SGE.Input.Keycode4 -> Just Keysym.Number4
+            SGE.Input.Keycode5 -> Just Keysym.Number5
+            SGE.Input.Keycode6 -> Just Keysym.Number6
+            SGE.Input.Keycode7 -> Just Keysym.Number7
+            SGE.Input.Keycode8 -> Just Keysym.Number8
+            SGE.Input.Keycode9 -> Just Keysym.Number9
+            SGE.Input.KeycodeF1 -> Just Keysym.F1
+            SGE.Input.KeycodeF2 -> Just Keysym.F2
+            SGE.Input.KeycodeF3 -> Just Keysym.F3
+            SGE.Input.KeycodeF4 -> Just Keysym.F4
+            SGE.Input.KeycodeF5 -> Just Keysym.F5
+            SGE.Input.KeycodeF6 -> Just Keysym.F6
+            SGE.Input.KeycodeF7 -> Just Keysym.F7
+            SGE.Input.KeycodeF8 -> Just Keysym.F8
+            SGE.Input.KeycodeF9 -> Just Keysym.F9
+            SGE.Input.KeycodeF10 -> Just Keysym.F10
+            SGE.Input.KeycodeF11 -> Just Keysym.F11
+            SGE.Input.KeycodeF12 -> Just Keysym.F12
+            SGE.Input.KeycodeF13 -> Just Keysym.F13
+            SGE.Input.KeycodeF14 -> Just Keysym.F14
+            SGE.Input.KeycodeF15 -> Just Keysym.F15
+            SGE.Input.KeycodeComma -> Just Keysym.Comma
+            SGE.Input.KeycodeColon -> Just Keysym.Colon
+            SGE.Input.KeycodeDecimal -> Just Keysym.DecimalSeparator
+            SGE.Input.KeycodeApostrophe -> Nothing
+            SGE.Input.KeycodeBackslash -> Just Keysym.Backslash
+            SGE.Input.KeycodeGrave -> Nothing
+            SGE.Input.KeycodeSubtract -> Just Keysym.Minus
+            SGE.Input.KeycodeLeftBracket -> Just Keysym.LeftBracket
+            SGE.Input.KeycodeRightBracket -> Just Keysym.RightBracket
+            SGE.Input.KeycodeSemicolon -> Just Keysym.Semicolon
+            SGE.Input.KeycodeSlash -> Just Keysym.Slash
+            SGE.Input.KeycodeUnderline -> Just Keysym.Underscore
+            SGE.Input.KeycodeScroll -> Just Keysym.ScrollLock
+            SGE.Input.KeycodePause -> Just Keysym.Pause
+            SGE.Input.KeycodeLeftWin -> Nothing
+            SGE.Input.KeycodeRightWin -> Nothing
+            SGE.Input.KeycodeNum0 -> Just Keysym.Keypad0
+            SGE.Input.KeycodeNum1 -> Just Keysym.Keypad1
+            SGE.Input.KeycodeNum2 -> Just Keysym.Keypad2
+            SGE.Input.KeycodeNum3 -> Just Keysym.Keypad3
+            SGE.Input.KeycodeNum4 -> Just Keysym.Keypad4
+            SGE.Input.KeycodeNum5 -> Just Keysym.Keypad5
+            SGE.Input.KeycodeNum6 -> Just Keysym.Keypad6
+            SGE.Input.KeycodeNum7 -> Just Keysym.Keypad7
+            SGE.Input.KeycodeNum8 -> Just Keysym.Keypad8
+            SGE.Input.KeycodeNum9 -> Just Keysym.Keypad9
+            SGE.Input.KeycodeNumComma -> Just Keysym.KeypadPeriod
+            SGE.Input.KeycodeNumEnter -> Just Keysym.KeypadEnter
+            SGE.Input.KeycodeNumEquals -> Nothing
+            SGE.Input.KeycodeNumLock -> Just Keysym.NumLockClear
+            SGE.Input.KeycodeAdd -> Nothing
+            SGE.Input.KeycodeMinus -> Just Keysym.Minus
+            SGE.Input.KeycodeMultiply-> Nothing
+            SGE.Input.KeycodeDivide -> Nothing
+            SGE.Input.KeycodeApps -> Just Keysym.Application
+            SGE.Input.KeycodeCircumflex -> Nothing
+            SGE.Input.KeycodeAt -> Just Keysym.At
+            SGE.Input.KeycodeAx -> Nothing
+            SGE.Input.KeycodeEquals -> Just Keysym.Equals
+            SGE.Input.KeycodeKana -> Nothing
+            SGE.Input.KeycodeKanji -> Nothing
+            SGE.Input.KeycodeConvert -> Nothing
+            SGE.Input.KeycodeNoconvert -> Nothing
+            SGE.Input.KeycodePeriod -> Just Keysym.Period
+            SGE.Input.KeycodePower -> Just Keysym.Power
+            SGE.Input.KeycodeSleep -> Just Keysym.Sleep
+            SGE.Input.KeycodeStop -> Just Keysym.Stop
+            SGE.Input.KeycodeSysrq -> Just Keysym.SysReq
+            SGE.Input.KeycodePrint -> Just Keysym.PrintScreen
+            SGE.Input.KeycodeUnlabeled -> Nothing
+            SGE.Input.KeycodeYen -> Nothing
+            SGE.Input.KeycodeUnknown -> Nothing
 
 data InputEvent =
-     KeyEvent (SGE.Input.KeyboardKey, SGE.Input.KeyState)
-     | KeyRepeatEvent SGE.Input.KeyboardKey
+     KeyEvent (SGE.Input.KeyCode, SGE.Input.KeyState)
+     | KeyRepeatEvent SGE.Input.KeyCode
      | CursorButtonEvent (SGE.Input.CursorButtonCode, SGE.Input.CursorButtonState, SGE.Pos.Pos)
      | CursorMoveEvent SGE.Pos.Pos
      | CursorScrollEvent (SGE.Input.CursorScrollCode, Int)
@@ -478,10 +478,10 @@ cursorScrollCallback inputs code delta = appendInput inputs (CursorScrollEvent (
 mouseAxisCallback :: InputsRef -> SGE.Input.MouseAxisCode -> Int -> IO ()
 mouseAxisCallback inputs axis delta = appendInput inputs (MouseMoveEvent (axis, delta))
 
-keyCallback :: InputsRef -> SGE.Input.KeyboardKey -> SGE.Input.KeyState -> IO ()
+keyCallback :: InputsRef -> SGE.Input.KeyCode -> SGE.Input.KeyState -> IO ()
 keyCallback inputs key status = appendInput inputs (KeyEvent (key, status))
 
-keyRepeatCallback :: InputsRef -> SGE.Input.KeyboardKey -> IO ()
+keyRepeatCallback :: InputsRef -> SGE.Input.KeyCode -> IO ()
 keyRepeatCallback inputs key = appendInput inputs (KeyRepeatEvent key)
 
 makeAudioRepeat :: PlayMode -> SGE.Audio.Repeat
@@ -524,8 +524,8 @@ instance Platform SGEPlatform where
                   SGE.Font.destroyFont font >> SGE.Font.destroyAdded added
          pollEvents p = do
                     inputs <- newIORef []
-                    SGE.Input.withKeyCallback (keyboard p) (keyCallback inputs)
-                        (SGE.Input.withKeyRepeatCallback (keyboard p) (keyRepeatCallback inputs)
+                    SGE.Input.withFocusKeyCallback (focus p) (keyCallback inputs)
+                        (SGE.Input.withKeyRepeatCallback (focus p) (keyRepeatCallback inputs)
                              (SGE.Input.withCursorButtonCallback (cursor p) (cursorButtonCallback inputs)
                                   (SGE.Input.withCursorMoveCallback (cursor p) (cursorMoveCallback inputs)
                                        (SGE.Input.withMouseAxisCallback (mouse p) (mouseAxisCallback inputs)
