@@ -4,7 +4,7 @@ module Wrench.Backends.Sdl.Sdl2AudioFile where
 import           ClassyPrelude
 import           Control.Lens          (makeLenses)
 import           Foreign.ForeignPtr    (ForeignPtr)
-import           Graphics.UI.SDL.Types (AudioSpec (..))
+import           SDL.Raw.Types(AudioSpec (..))
 
 data Sdl2AudioFile = Sdl2AudioFile {
     _sdl2afAudioSpec :: AudioSpec

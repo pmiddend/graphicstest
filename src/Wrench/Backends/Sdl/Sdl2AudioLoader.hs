@@ -1,12 +1,10 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 module Wrench.Backends.Sdl.Sdl2AudioLoader(sdl2LoadWave) where
 
-import Graphics.UI.SDL.Audio(loadWAV)
-import Graphics.UI.SDL.Types(AudioSpec(..),AudioFormat)
+import SDL.Raw.Audio(loadWAV)
+import SDL.Raw.Types(AudioFormat,AudioSpec(..))
 import Control.Lens((^.))
-import Foreign.Ptr
 import           ClassyPrelude             hiding (lookup,FilePath,(</>),Vector)
-import System.ByteOrder
 import qualified Data.Vector.Storable as SV
 import Wrench.AudioFile
 import Foreign.Marshal.Alloc(alloca)
@@ -18,7 +16,8 @@ import Data.Bits(rotateL,Bits)
 import Wrench.Backends.Sdl.Sdl2AudioFile
 import Data.Word(Word16)
 import System.FilePath
-
+import System.ByteOrder(ByteOrder(..),byteOrder)
+import Foreign.Ptr(nullPtr)
 
 sdl_AUDIO_U8 :: AudioFormat
 sdl_AUDIO_U8 = 0x0008

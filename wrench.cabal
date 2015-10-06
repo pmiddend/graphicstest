@@ -147,9 +147,10 @@ library
     other-modules:     Wrench.Backends.Sge.SGEPlatform
   else
     if flag(sdl)
-      build-depends:     sdl2
+      build-depends:     sdl2 >= 2.0.0
                        , JuicyPixels
                        , byteorder
+                       , StateVar
       cpp-options:       -DUSE_SDL
       other-modules:     Wrench.Backends.Sdl.Sdl2Platform
                        , Wrench.Backends.Sdl.Sdl2AudioLoader
