@@ -9,7 +9,7 @@ module Wrench.MonadGame(
   , MonadGameBackend
   ) where
 
-import           ClassyPrelude                  hiding (FilePath, (</>))
+import           ClassyPrelude                  hiding (FilePath, (</>), threadDelay)
 import           Control.Lens                   ((^.))
 import           Control.Monad.Random           (MonadRandom (..), RandT,
                                                  evalRandT)

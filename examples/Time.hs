@@ -1,7 +1,7 @@
 module Main where
 
 import Wrench.Time
-import ClassyPrelude
+import ClassyPrelude hiding (threadDelay)
 
 main :: IO ()
 main = do

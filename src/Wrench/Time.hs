@@ -13,7 +13,7 @@ module Wrench.Time(
   , toMilliseconds
 ) where
 
-import           ClassyPrelude
+import           ClassyPrelude hiding (threadDelay)
 import qualified Control.Concurrent as CC
 import           System.Clock       (Clock (Monotonic), TimeSpec (TimeSpec),
                                      getTime)

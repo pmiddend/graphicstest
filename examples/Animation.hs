@@ -1,6 +1,6 @@
 module Main where
 
-import           ClassyPrelude        hiding ((</>))
+import           ClassyPrelude        hiding ((</>), threadDelay)
 import           Control.Lens         (ix, (^.), (^?!))
 import           Linear.V2
 import           System.FilePath
