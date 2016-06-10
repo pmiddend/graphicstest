@@ -113,7 +113,7 @@ library
                      , Wrench.PlayMode
                      , Wrench.ImageIdentifier
                      , Wrench.ImageMap
-  build-depends:       base >=4.7 && <4.9
+  build-depends:       base >=4.7 && <5
                      , linear
                      , lens
                      , containers
@@ -166,7 +166,7 @@ executable example_time
   main-is:             Time.hs
   hs-source-dirs:      examples
   -- other-extensions:
-  build-depends:       base >=4.7 && <4.9
+  build-depends:       base >=4.7 && <5
                      , wrench
                      , classy-prelude
   default-language:    Haskell2010
@@ -178,7 +178,7 @@ executable example_monadgame
   main-is:             MonadGame.hs
   hs-source-dirs:      examples
   -- other-extensions:
-  build-depends:       base >=4.7 && <4.9
+  build-depends:       base >=4.7 && <5
                      , wrench
                      , classy-prelude
                      , lens
@@ -191,7 +191,7 @@ executable example_solar_system
   main-is:             SolarSystem.hs
   hs-source-dirs:      examples
   -- other-extensions:
-  build-depends:       base >=4.7 && <4.9
+  build-depends:       base >=4.7 && <5
                      , wrench
                      , classy-prelude
                      , lens
@@ -205,7 +205,7 @@ executable example_animation
   main-is:             Animation.hs
   hs-source-dirs:      examples
   -- other-extensions:
-  build-depends:       base >=4.7 && <4.9
+  build-depends:       base >=4.7 && <5
                      , wrench
                      , classy-prelude
                      , lens
@@ -221,7 +221,7 @@ executable example_sound
   main-is:             Sound.hs
   hs-source-dirs:      examples
   -- other-extensions:
-  build-depends:       base >=4.7 && <4.9
+  build-depends:       base >=4.7 && <5
                      , wrench
                      , classy-prelude
   if flag(sge)
@@ -237,7 +237,7 @@ executable example_bitmapfont
   main-is:             BitmapFont.hs
   hs-source-dirs:      examples
   -- other-extensions:
-  build-depends:       base >=4.7 && <4.9
+  build-depends:       base >=4.7 && <5
                      , wrench
                      , lens
                      , linear
