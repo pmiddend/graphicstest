@@ -52,7 +52,7 @@ toV2 = to toV2'
 mkTranslation :: Num a => V2 a -> M33 a
 mkTranslation p = V3 (V3 1 0 (p ^. _x)) (V3 0 1 (p ^. _y)) (V3 0 0 1)
 
-mkRotation :: (Floating a,Num a) => a -> M33 a
+mkRotation :: (Floating a) => a -> M33 a
 mkRotation r = V3 (V3 cs (-sn) 0) (V3 sn cs 0) (V3 0 0 1)
   where cs = cos r
         sn = sin r
@@ -114,7 +114,7 @@ renderPicture rs p = case p of
     return [RenderOperationSprite (SpriteInstance image (srcRect ^. to (fmap fromIntegral)) destRect rot (rs ^. rsColor))]
 
 -- | Render a 'Picture' using integer coordinates using the given 'Platform'
-wrenchRender :: forall real int p.(Show real,RealFrac real,Integral int,Floating real,Real real,Platform p) => p
+wrenchRender :: forall real int p.(Show real,RealFrac real,Integral int,Floating real,Platform p) => p
              -> SurfaceMap (PlatformImage p) -- ^ Surfaces to use for the sprite identifiers
              -> PlatformFont p -- ^ Font to use for font nodes (can be undefined if the picture contains no fonts)
              -> Maybe Color -- ^ Screen clear color. If this is not given, the screen is not cleared

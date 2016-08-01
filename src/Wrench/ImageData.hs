@@ -52,13 +52,13 @@ findSurfaceUnsafe :: SurfaceMap a -> ImageIdentifier -> SurfaceData a
 findSurfaceUnsafe sm im = fromMaybe (error $ "Cannot find image \"" <> T.unpack im <> "\" in " <> (show (keys sm))) (im `M.lookup` sm)
 
 -- ^ Retrieves all "descriptor files" (files ending in .txt with the same name as the image) from the given directory
-getDescFilesInDir :: (Functor m,MonadIO m) => FilePath -> m [ImageDescFile]
+getDescFilesInDir :: (MonadIO m) => FilePath -> m [ImageDescFile]
 getDescFilesInDir dir = getFilesWithExtInDir dir ".txt"
 
 imageDescToSurface :: ImageLoadFunction m a -> ImageDescFile -> m a
 imageDescToSurface loadImage x = loadImage (replaceExtension x "png")
 
-imageDescToMaps :: forall a m.(Functor m,Applicative m,MonadIO m) => ImageDescFile -> a -> m (SurfaceMap a,AnimMap)
+imageDescToMaps :: forall a m.(Applicative m,MonadIO m) => ImageDescFile -> a -> m (SurfaceMap a,AnimMap)
 imageDescToMaps f s = (,) <$> (toSurfaceMap s <$> rSurfaceData) <*> rAnimData
   where rImageData :: m [DataLine]
         rImageData = readImageDataFromFile f

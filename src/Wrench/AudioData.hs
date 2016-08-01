@@ -16,10 +16,10 @@ import           Wrench.Filesystem
 import           Wrench.SoundIdentifier
 import           Wrench.SoundMap
 
-loadSoundTuple :: (Applicative m,Functor m,Monad m) => (FilePath -> m a) -> FilePath -> m (SoundIdentifier,a)
+loadSoundTuple :: (Applicative m,Monad m) => (FilePath -> m a) -> FilePath -> m (SoundIdentifier,a)
 loadSoundTuple loader fn = (,) <$> (pure . pack . dropExtension . takeFileName $ fn) <*> loader fn
 
-readAudioFiles :: (Applicative m,Functor m,MonadIO m) =>
+readAudioFiles :: (Applicative m,MonadIO m) =>
                   (FilePath -> m a) -- ^ Audio file loader
                -> FilePath          -- ^ Root directory
                -> m (SoundMap a)

@@ -21,7 +21,7 @@ doesDirectoryExistWrapped fp = liftIO (doesDirectoryExist fp)
 
 type Extension = String
 
-getFilesWithExtInDir :: (Functor m,MonadIO m) => FilePath -> Extension -> m [FilePath]
+getFilesWithExtInDir :: (MonadIO m) => FilePath -> Extension -> m [FilePath]
 getFilesWithExtInDir dir ext = filter (takeExtension >>> (== ext)) <$> getFilesInDir dir
 
 -- Holt nur die Files (ohne . und ..) aus einem Verzeichnis
