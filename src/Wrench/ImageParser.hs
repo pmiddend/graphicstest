@@ -4,7 +4,7 @@
 {-# LANGUAGE TupleSections         #-}
 module Wrench.ImageParser(DataLine(..),readImageDataFromFile,readImageDataFromText) where
 
-import           ClassyPrelude          hiding (FilePath, (</>))
+import           ClassyPrelude          hiding (FilePath, (</>), point)
 import           Data.Attoparsec.Text   (Parser, char, many1, notInClass,
                                          parseOnly, satisfy, scientific, sepBy1)
 import           Data.Scientific        (Scientific, toBoundedInteger)
